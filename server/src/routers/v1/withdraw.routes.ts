@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { WithdrawController } from "../../controllers/withdraw.controller";
-import { isAuthenticated } from "../../middleware/isAuth.middleware";
+import { isAuthenticated } from "../../middlewares/isAuth.middleware";
 import { WithdrawRepository } from "../../repositories/withdraw.repository";
 import { WithdrawService } from "../../service/withdraw.service";
 import { validateRequestBody } from "../../validators";
