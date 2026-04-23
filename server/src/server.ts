@@ -1,6 +1,6 @@
 import express from 'express';
 import { serverConfig } from './config';
-import v1Router from './routers/v1/index.router';
+import v1Router from './routers/v1/index.routes';
 import { appErrorHandler, genericErrorHandler } from './middlewares/error.middleware';
 import logger from './config/logger.config';
 import { connectDB } from './db/db';

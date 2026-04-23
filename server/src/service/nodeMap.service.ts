@@ -1,0 +1,27 @@
+import { NodeLatestRepository } from "../repositories/nodeLatest.repository";
+
+export class NodeMapService {
+
+    constructor(private nodeRepo: NodeLatestRepository) {}
+
+    /**
+     * Format data for Leaflet/Mapbox
+     */
+    async getMapNodes() {
+        const nodes = await this.nodeRepo.getAllNodesForMap();
+
+        // transform for frontend map usage
+        return nodes.map(node => ({
+            nodeId: node.nodeId,
+            lat: node.location?.lat,
+            lng: node.location?.lng,
+            aqi: node.aqi,
+            aqiLevel: node.aqiLevel,
+            temperature: node.temperature,
+            pm25: node.pm25,
+            pm10: node.pm10,
+            reward: node.reward,
+            updatedAt: node.updatedAt
+        }));
+    }
+}
