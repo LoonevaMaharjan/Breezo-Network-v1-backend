@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { NodeService } from "../service/node.service";
+import { AuthRequest } from "../middlewares/isAuth.middleware";
 
 
 export class NodeController {
@@ -25,19 +26,24 @@ export class NodeController {
     /**
      * USER DASHBOARD
      */
-    dashboard = async (req: any, res: Response, next: NextFunction) => {
-        try {
-            const email ="everest@test.com" // from JWT middleware
+   dashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+        const email = req.user?.email;
 
-            const result = await this.nodeService.getUserDashboard(email);
-
-             res.status(200).json({
-                success: true,
-                message: "Dashboard fetched successfully",
-                data: result
-            });
-        } catch (error) {
-            next(error);
+        if (!email) {
+            throw new Error("User email not found in token");
         }
-    };
+
+        const result = await this.nodeService.getUserDashboard(email);
+
+        res.status(200).json({
+            success: true,
+            message: "Dashboard fetched successfully",
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
 }

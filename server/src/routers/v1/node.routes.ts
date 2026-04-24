@@ -4,6 +4,7 @@ import { NodeRepository } from "../../repositories/node.repository";
 import { NodeService } from "../../service/node.service";
 import { validateRequestBody } from "../../validators";
 import { nodeDataSchema } from "../../validators/node.validator";
+import { isAuthenticated } from "../../middlewares/isAuth.middleware";
 
 const nodeRouter = Router();
 
@@ -23,6 +24,6 @@ nodeRouter.post(
 /**
  * User → dashboard
  */
-nodeRouter.get("/dashboard", nodeController.dashboard);
+nodeRouter.get("/dashboard",isAuthenticated , nodeController.dashboard);
 
 export default nodeRouter;
