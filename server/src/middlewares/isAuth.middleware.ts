@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { BadRequestError } from "../utils/errors/app.error";
+import { serverConfig } from "../config";
 
 /**
  * Extend Express Request type to include user
@@ -27,7 +28,7 @@ export const isAuthenticated = (
 
         const token = authHeader.split(" ")[1];
 
-        const JWT_SECRET = process.env.JWT_SECRET;
+        const JWT_SECRET = serverConfig.JWT_SECRET;
 
         if (!JWT_SECRET) {
             throw new BadRequestError("JWT secret not configured");
