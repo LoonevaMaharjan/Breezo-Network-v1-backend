@@ -58,10 +58,11 @@ export class NodeLatestRepository {
      * 🔐 MARK SYNCING (avoid duplicate Solana calls)
      */
     async markSyncing(nodeId: string) {
-        return NodeLatest.updateOne(
+         NodeLatest.updateOne(
             { nodeId },
             { syncing: true }
         );
+        return
     }
 
     /**

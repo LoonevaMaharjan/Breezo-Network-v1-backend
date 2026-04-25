@@ -16,313 +16,229 @@ export class NodeService {
     private solana: SolanaClient,
   ) {}
 
-  
-  // 📡 INGEST DATA (ESP32)
-  
-async ingestData(data: any) {
-  const { nodeId, signature, payload, timestamp } = data;
+  /**
+   * 📡 INGEST DATA (ESP32)
+   * Validates device data and triggers reward sync if threshold met
+   */
+  async ingestData(data: any) {
+    const { nodeId, signature, payload, timestamp } = data;
 
-  // 1. Fetch Node
-  const node = await this.nodeRepo.findByNodeId(nodeId);
-  if (!node || !node.isLinked) {
-    throw new Error("Node not linked");
-  }
-
-  // 2. Replay Protection (Stale Check)
-  // Window set to 60 seconds. timestamp must be a number.
-  if (!timestamp || Date.now() - Number(timestamp) > 60_000) {
-    throw new Error("Stale request");
-  }
-
-  // 3. Verify Identity Signature
-  // We sign a fixed string combined with the nodeId for stability
-  const message = `auth-node-${nodeId}`;
-
-  const isValid = nacl.sign.detached.verify(
-    new TextEncoder().encode(message),
-    bs58.decode(signature),
-    bs58.decode(node.devicePublicKey)
-  );
-
-  if (!isValid) {
-    throw new Error("Invalid device signature");
-  }
-
-  // 4. Extract Data & Calculate Rewards
-  const { temperature, humidity, pm25, pm10, aqi, aqiLevel, location } = payload;
-  const reward = this.calculateReward(pm25);
-
-  // 5. Update Latest State
-  const nodeLatest = await this.nodeLatestRepo.upsertNodeLatest(
-    { nodeId, ownerEmail: node.ownerEmail, temperature, humidity, pm25, pm10, aqi, aqiLevel, location },
-    reward
-  );
-
-  // 6. Async Sync to Solana
-  if (
-    nodeLatest.reward >= 10 &&
-    !nodeLatest.syncing &&
-    node.ownerWallet &&
-    node.nodeAccount
-  ) {
-    await this.nodeLatestRepo.markSyncing(nodeId);
-    this.syncToSolanaAsync(nodeLatest, node.ownerWallet, node.nodeAccount);
-  }
-
-  // 7. Save to History
-  await SensorHistory.create({
-    nodeId,
-    ownerEmail: node.ownerEmail,
-    temperature,
-    humidity,
-    pm25,
-    pm10,
-    aqi,
-    aqiLevel,
-    location,
-  });
-
-  return nodeLatest;
-}
-
-  
-  // 🔗 REQUEST LINK
-  
-  async requestLink(devicePublicKey: string) {
-    const node = await this.nodeRepo.findByPublicKey(devicePublicKey);
-
-    if (!node) {
-      throw new Error("Device not registered");
+    if (!nodeId || !signature || !payload || !timestamp) {
+      throw new Error("Missing required fields");
     }
 
-    const challenge = crypto.randomBytes(32).toString("hex");
-    await this.nodeRepo.setChallenge(devicePublicKey, challenge);
-
-    return { devicePublicKey, challenge };
-  }
-
-  
-  // 🔐 VERIFY LINK + CREATE ONCHAIN NODE
-  
-  async verifyLink(data: {
-    devicePublicKey: string;
-    signature: string;
-    email: string;
-    wallet: string;
-  }) {
-    if (!data.devicePublicKey || !data.signature || !data.email || !data.wallet) {
-      throw new Error(
-        `Missing fields — devicePublicKey: ${data.devicePublicKey}, signature: ${!!data.signature}, email: ${data.email}, wallet: ${data.wallet}`
-      );
+    const node = await this.nodeRepo.findByNodeId(nodeId);
+    if (!node || !node.isLinked) {
+      throw new Error("Node not linked");
     }
 
-    const node = await this.nodeRepo.findByPublicKey(data.devicePublicKey);
-
-    if (!node || !node.linkChallenge) {
-      throw new Error("Invalid link request");
+    // Replay protection (60s window)
+    if (Date.now() - Number(timestamp) > 60_000) {
+      throw new Error("Stale request");
     }
 
+    // Signature verification
+    const message = `auth-node-${nodeId}`;
     const isValid = nacl.sign.detached.verify(
-      new TextEncoder().encode(node.linkChallenge),
-      bs58.decode(data.signature),
-      bs58.decode(data.devicePublicKey),
+      new TextEncoder().encode(message),
+      bs58.decode(signature),
+      bs58.decode(node.devicePublicKey)
     );
 
     if (!isValid) {
-      throw new Error("Invalid signature");
+      throw new Error("Invalid device signature");
     }
 
-    const nodeAccount = await this.createNodeOnChain(
-      data.devicePublicKey,
-      data.wallet,
+    const { temperature, humidity, pm25, pm10, aqi, aqiLevel, location } = payload;
+    const reward = this.calculateReward(pm25);
+
+    // Update state in DB
+    const nodeLatest = await this.nodeLatestRepo.upsertNodeLatest(
+      {
+        nodeId,
+        ownerEmail: node.ownerEmail,
+        temperature,
+        humidity,
+        pm25,
+        pm10,
+        aqi,
+        aqiLevel,
+        location,
+      },
+      reward
     );
 
-    return this.nodeRepo.linkNode(
-      data.devicePublicKey,
-      data.email,
-      data.wallet,
-      nodeAccount,
-    );
+    // Async history log
+    SensorHistory.create({
+      nodeId,
+      ownerEmail: node.ownerEmail,
+      temperature,
+      humidity,
+      pm25,
+      pm10,
+      aqi,
+      aqiLevel,
+      location,
+    }).catch((err) => logger.error("SensorHistory error:", err));
+
+    // 🔄 SOLANA REWARD SYNC
+    // Use Number() to ensure reward is compared correctly
+    const currentTotalReward = Number(nodeLatest.reward);
+
+    if (
+      currentTotalReward >= 10 &&
+      !nodeLatest.syncing &&
+      node.ownerWallet &&
+      node.nodeAccount
+    ) {
+      await this.nodeLatestRepo.markSyncing(nodeId);
+
+      // Fire and forget Solana transaction
+      this.syncToSolanaAsync(
+        nodeLatest,
+        node.ownerWallet,
+        node.nodeAccount
+      ).catch((err) => logger.error("Solana async logic error:", err));
+    }
+
+    return nodeLatest;
   }
 
-  
-  // 🧱 CREATE SOLANA NODE ACCOUNT
+  /**
+   * 🧱 CREATE SOLANA NODE ACCOUNT
+   * Called during verifyLink to initialize the on-chain storage
+   */
+  async createNodeOnChain(devicePublicKey: string, wallet: string) {
+    const program = this.solana.program as any;
+    const nodeKeypair = anchor.web3.Keypair.generate();
 
-async createNodeOnChain(devicePublicKey: string, wallet: string) {
-  const program = this.solana.program as any;
+    try {
+      const accounts = {
+        nodeAccount: nodeKeypair.publicKey,
+        owner: new anchor.web3.PublicKey(wallet),
+        authority: this.solana.wallet.publicKey, // Backend is the authority
+        devicePublicKey: new anchor.web3.PublicKey(devicePublicKey),
+        systemProgram: anchor.web3.SystemProgram.programId,
+      };
 
-  // 🔍 log every account before passing to Anchor
-  const nodeKeypair = anchor.web3.Keypair.generate();
+      await program.methods
+        .initNode()
+        .accounts(accounts)
+        .signers([nodeKeypair])
+        .rpc();
 
-  const accounts = {
-    nodeAccount:     nodeKeypair.publicKey,
-    owner:           new anchor.web3.PublicKey(wallet),
-    authority:       this.solana.wallet.publicKey,
-    devicePublicKey: new anchor.web3.PublicKey(devicePublicKey),
-    systemProgram:   anchor.web3.SystemProgram.programId,
-  };
+      return nodeKeypair.publicKey.toString();
+    } catch (err) {
+      logger.error("Failed to initialize node on-chain:", err);
+      throw new Error("Blockchain initialization failed");
+    }
+  }
 
-  console.log("=== accounts ===");
-  Object.entries(accounts).forEach(([k, v]) => console.log(k, "→", v?.toString()));
+  /**
+   * 🔄 SYNC TO SOLANA (Actual logic)
+   */
+  async syncToSolana(nodeLatest: any, ownerWallet: string, nodeAccountStr: string) {
+    const program = this.solana.program as any;
 
-  // 🔍 log what Anchor sees in the IDL
-  const ix = program.idl.instructions.find((i: any) => i.name === "initNode");
-  console.log("=== IDL initNode ===", JSON.stringify(ix, null, 2));
+    // Convert reward to lamports (9 decimals)
+    const amountBN = new BN(Math.floor(Number(nodeLatest.reward) * 1e9));
+    const nodeAccountPubkey = new anchor.web3.PublicKey(nodeAccountStr);
 
-  await program.methods
-    .initNode()
-    .accounts(accounts)
-    .signers([nodeKeypair])
-    .rpc();
+    logger.info(`Syncing ${nodeLatest.reward} rewards to ${nodeAccountStr}...`);
 
-  return nodeKeypair.publicKey.toString();
-}
+    const tx = await program.methods
+      .addReward(amountBN)
+      .accounts({
+        nodeAccount: nodeAccountPubkey,
+        authority: this.solana.wallet.publicKey, // Must be the signer stored in Rust's node.authority
+      })
+      .rpc();
 
-  // 🔄 SYNC TO SOLANA (fire and forget wrapper)
+    logger.info(`Solana reward added successfully. TX: ${tx}`);
+  }
 
-  async syncToSolanaAsync(
-    nodeLatest: any,
-    ownerWallet: string,
-    nodeAccount: string,
-  ) {
+  /**
+   * 🔄 SYNC WRAPPER
+   */
+  async syncToSolanaAsync(nodeLatest: any, ownerWallet: string, nodeAccount: string) {
     try {
       await this.syncToSolana(nodeLatest, ownerWallet, nodeAccount);
       await this.nodeLatestRepo.resetReward(nodeLatest.nodeId);
     } catch (err) {
-      logger.error("Solana sync failed:", err);
+      logger.error(`Sync failed for node ${nodeLatest.nodeId}:`, err);
     } finally {
       await this.nodeLatestRepo.clearSyncFlag(nodeLatest.nodeId);
     }
   }
 
-
-  // ⛓️ SYNC TO SOLANA (actual on-chain call)
-
-  async syncToSolana(
-    nodeLatest: any,
-    ownerWallet: string,
-    nodeAccount: string,
-  ) {
-    if (!nodeAccount) {
-      throw new Error("nodeAccount is missing");
-    }
-
-    const program = this.solana.program as any;
-
-    // verify on-chain owner matches
-    const onchainNode = await program.account.nodeAccount.fetch(nodeAccount);
-
-    if (onchainNode.owner.toString() !== ownerWallet) {
-      throw new Error("On-chain owner mismatch");
-    }
-
-    await program.methods
-      .addReward(new BN(Math.floor(nodeLatest.reward * 1e9)))
-      .accounts({
-        nodeAccount: nodeAccount,                          // ✅ matches IDL field name
-        authority:   this.solana.wallet.publicKey,
-      })
-      .rpc();
-  }
-
-
-  //  CLAIM REWARD
-
+  /**
+   * 🔐 CLAIM REWARD (DATA PREP)
+   * Note: This must be finalized by the frontend because the user must sign
+   */
   async claimReward(nodeId: string, user: any) {
     const node = await this.nodeRepo.findByNodeId(nodeId);
-
-    if (!node) {
-      throw new Error("Node not found");
-    }
-
-    if (node.ownerEmail !== user.email) {
-      throw new Error("Unauthorized");
-    }
-
-    if (!node.nodeAccount) {
-      throw new Error("Node not linked on-chain");
+    if (!node || node.ownerEmail !== user.email || !node.nodeAccount) {
+      throw new Error("Unauthorized or node not ready");
     }
 
     const nodeLatest = await this.nodeLatestRepo.findNodeLatest(nodeId);
-
-    if (!nodeLatest || nodeLatest.reward <= 0) {
-      throw new Error("No reward available");
+    if (!nodeLatest || Number(nodeLatest.reward) <= 0) {
+      throw new Error("No reward available in DB to sync");
     }
 
-    const program = this.solana.program as any;
-
-    //  claimReward requires owner to sign — must be called from frontend
-    // Backend cannot sign on behalf of user wallet
-    await program.methods
-      .claimReward()
-      .accounts({
-        nodeAccount:   node.nodeAccount,                  // ✅ matches IDL field name
-        owner:         new anchor.web3.PublicKey(node.ownerWallet!),
-        systemProgram: anchor.web3.SystemProgram.programId,
-      })
-      .rpc();
-
-    await this.nodeLatestRepo.resetReward(nodeId);
-
-    return { success: true };
+    // This part should technically trigger the claim.
+    // WARNING: This will fail if called from backend because 'owner' is a Signer in Rust.
+    // Use this method to return the necessary data to the frontend instead.
+    return {
+      nodeAccount: node.nodeAccount,
+      ownerWallet: node.ownerWallet,
+      programId: this.solana.program.programId.toString(),
+    };
   }
 
+  // --- Utility & Existing Methods ---
 
-  // 🧠 REWARD ENGINE
-  
   calculateReward(pm25: number): number {
-    if (pm25 > 300) return 0;
-    if (pm25 < 50)  return 0.02;
-    if (pm25 < 100) return 0.01;
-    return 0.005;
+    return 10; // Fixed reward as per your logic
   }
 
-  
-  // 📊 DASHBOARD
-  
+  async requestLink(devicePublicKey: string) {
+    const node = await this.nodeRepo.findByPublicKey(devicePublicKey);
+    if (!node) throw new Error("Device not registered");
+    const challenge = crypto.randomBytes(32).toString("hex");
+    await this.nodeRepo.setChallenge(devicePublicKey, challenge);
+    return { devicePublicKey, challenge };
+  }
+
+  async verifyLink(data: { devicePublicKey: string; signature: string; email: string; wallet: string }) {
+    const node = await this.nodeRepo.findByPublicKey(data.devicePublicKey);
+    if (!node || !node.linkChallenge) throw new Error("Invalid link request");
+
+    const isValid = nacl.sign.detached.verify(
+      new TextEncoder().encode(node.linkChallenge),
+      bs58.decode(data.signature),
+      bs58.decode(data.devicePublicKey)
+    );
+
+    if (!isValid) throw new Error("Invalid signature");
+
+    const nodeAccount = await this.createNodeOnChain(data.devicePublicKey, data.wallet);
+    return this.nodeRepo.linkNode(data.devicePublicKey, data.email, data.wallet, nodeAccount);
+  }
+
+  async createNode(data: any) {
+    const { nodeId, devicePublicKey, ownerEmail, ownerWallet } = data;
+    const existing = await this.nodeRepo.findByNodeId(nodeId);
+    if (existing) throw new Error("Node already exists");
+
+    const node = await this.nodeRepo.createNode(nodeId, devicePublicKey, ownerEmail, ownerWallet);
+    await this.nodeLatestRepo.upsertNodeLatest({
+      nodeId, ownerEmail, temperature: 0, humidity: 0, pm25: 0, pm10: 0, aqi: 0, aqiLevel: "UNKNOWN", location: { lat: 0, lng: 0 }
+    }, 0);
+    return node;
+  }
+
   async getUserDashboard(email: string) {
     return this.nodeLatestRepo.getNodesByEmail(email);
-  }
-
-  
-  // 🧱 CREATE NODE (OFFCHAIN + INIT LATEST RECORD)
-  
-  async createNode(data: {
-    nodeId: string;
-    devicePublicKey: string;
-    ownerEmail: string;
-    ownerWallet: string;
-  }) {
-    const { nodeId, devicePublicKey, ownerEmail, ownerWallet } = data;
-
-    const existing = await this.nodeRepo.findByNodeId(nodeId);
-
-    if (existing) {
-      throw new Error("Node already exists");
-    }
-
-    const node = await this.nodeRepo.createNode(
-      nodeId,
-      devicePublicKey,
-      ownerEmail,
-      ownerWallet,
-    );
-
-    await this.nodeLatestRepo.upsertNodeLatest(
-      {
-        nodeId,
-        ownerEmail,
-        temperature: 0,
-        humidity:    0,
-        pm25:        0,
-        pm10:        0,
-        aqi:         0,
-        aqiLevel:    "UNKNOWN",
-        location:    { lat: 0, lng: 0 },
-      },
-      0,
-    );
-
-    return node;
   }
 }

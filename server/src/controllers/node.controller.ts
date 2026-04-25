@@ -99,16 +99,16 @@ createNode = async (
    */
   requestLink = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      const { publicKey } = req.body;
+      const { devicePublicKey } = req.body;
 
-      if (!publicKey) {
+      if (!devicePublicKey) {
          res.status(400).json({
           success: false,
           message: "publicKey required",
         });
       }
 
-      const result = await this.nodeService.requestLink(publicKey);
+      const result = await this.nodeService.requestLink(devicePublicKey);
 
        res.json({
         success: true,

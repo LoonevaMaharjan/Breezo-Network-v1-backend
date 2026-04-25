@@ -53,6 +53,7 @@
         "kind": "struct",
         "fields": [
           { "name": "owner",           "type": "pubkey" },
+          { "name": "authority",       "type": "pubkey" },
           { "name": "devicePublicKey", "type": "pubkey" },
           { "name": "rewardBalance",   "type": "u64"    }
         ]
