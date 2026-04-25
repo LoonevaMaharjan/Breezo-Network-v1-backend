@@ -1,384 +1,734 @@
+# Breezo Network
 
-#  Breezo Backend API
-
-
-This repository contains the backend system for **Breezo**, a decentralized IoT-based air quality monitoring platform where ESP32 devices send real-time environmental sensor data to a server. The backend processes, stores, and exposes this data for public visualization (maps) and user dashboards.
+> **DePIN air quality monitoring** — ESP32 nodes collect real-world sensor data, sign it cryptographically, and earn on-chain Solana rewards proportional to air quality.
 
 ---
 
-# 🚀 Base URL
+## Table of contents
+
+- [What is Breezo?](#what-is-breezo)
+- [Architecture](#architecture)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Environment setup](#environment-setup)
+- [Database models](#database-models)
+- [API reference](#api-reference)
+  - [POST /auth/signup](#post-authsignup)
+  - [POST /auth/login](#post-authlogin)
+  - [POST /node/create](#post-nodecreate)
+  - [POST /node/link/request](#post-nodelinkrequest)
+  - [POST /node/link/verify](#post-nodelinkverify)
+  - [POST /node/ingest](#post-nodeingest)
+  - [GET /node/dashboard](#get-nodedashboard)
+  - [POST /node/reward/claim](#post-noderewardclaim)
+- [Reward engine](#reward-engine)
+- [Solana program](#solana-program)
+- [ESP32 firmware](#esp32-firmware)
+- [Complete test walkthrough](#complete-test-walkthrough)
+- [Signature helper scripts](#signature-helper-scripts)
+
+---
+
+## What is Breezo?
+
+Breezo is a **Decentralized Physical Infrastructure Network (DePIN)** for air quality monitoring. Physical ESP32 devices equipped with DHT22, SDS011, and MQ135 sensors collect real-world air quality data every 15 seconds and submit it to a Node.js backend.
+
+Every submission is cryptographically signed with the device's **Ed25519 private key** — the backend verifies the signature before accepting any data, making spoofing impossible.
+
+Nodes accumulate reward tokens based on the air quality they report. Once the balance reaches 10 tokens, the backend automatically syncs the reward to a **Solana smart contract** on devnet. Users can then claim their lamports directly to their wallet.
+
+---
+
+## Architecture
 
 ```
-
-[http://localhost:5000/api/v1](http://localhost:5000/api/v1)
-
+┌─────────────────┐        signed payload         ┌──────────────────────┐
+│   ESP32 Node    │ ────────────────────────────► │   Node.js Backend    │
+│                 │                                │                      │
+│  DHT22 (temp)   │                                │  Auth (JWT)          │
+│  SDS011 (PM)    │                                │  Sig verification    │
+│  MQ135 (CO2)    │                                │  Reward engine       │
+│  Ed25519 key    │                                │  Solana sync         │
+└─────────────────┘                                └──────────┬───────────┘
+                                                              │
+                                          ┌───────────────────┼───────────────────┐
+                                          │                   │                   │
+                                   ┌──────▼──────┐   ┌───────▼───────┐           │
+                                   │   MongoDB   │   │ Solana devnet │           │
+                                   │             │   │               │           │
+                                   │ Node        │   │ initNode      │           │
+                                   │ NodeLatest  │   │ addReward     │           │
+                                   │ User        │   │ claimReward   │           │
+                                   └─────────────┘   └───────────────┘           │
 ```
 
 ---
 
-# 🧠 System Architecture
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Hardware | ESP8266 / ESP32, DHT22, SDS011, MQ135 |
+| Firmware | C++ / Arduino |
+| Backend | Node.js, Express, TypeScript |
+| Database | MongoDB + Mongoose |
+| Auth | JWT, bcrypt |
+| Cryptography | NaCl (tweetnacl), bs58, Ed25519 |
+| Blockchain | Solana devnet, Anchor framework |
+| Smart contract | Rust |
+
+---
+
+## Project structure
 
 ```
-
-ESP32 Device
-↓
-POST /node/ingest
-↓
-Express Backend (Validation + Processing)
-↓
-MongoDB
-├── NodeLatest (real-time map data)
-├── SensorHistory (analytics)
-└── User (authentication + rewards)
-↓
-API Layer
-├── /map/nodes (public map data)
-└── /node/dashboard (user analytics)
-
+breezo/
+├── server/
+│   └── src/
+│       ├── blockchain/
+│       │   └── solana.client.ts         # Anchor provider + wallet
+│       ├── config/
+│       │   └── index.ts                 # env vars (JWT_SECRET, PRIVATE_KEY, MONGO_URI)
+│       ├── controllers/
+│       │   ├── auth.controller.ts
+│       │   └── node.controller.ts
+│       ├── dto/
+│       │   └── auth.dto.ts              # SignUpDTO, LoginDTO
+│       ├── idl/
+│       │   └── breezo.json              # Anchor IDL (copy from target/idl after build)
+│       ├── middlewares/
+│       │   ├── isAuth.middleware.ts     # JWT verification → req.user
+│       │   └── error.middleware.ts      # global error handler
+│       ├── models/
+│       │   ├── user.model.ts
+│       │   ├── node.model.ts            # device registry (static)
+│       │   └── nodeLatest.model.ts      # live sensor state + rewards
+│       ├── repositories/
+│       │   ├── user.repository.ts
+│       │   ├── node.repository.ts
+│       │   └── nodeLatest.repository.ts
+│       ├── routes/
+│       │   ├── auth.routes.ts
+│       │   └── node.routes.ts
+│       ├── service/
+│       │   ├── auth.service.ts
+│       │   └── node.service.ts          # core business logic
+│       ├── utils/
+│       │   ├── jwt/token.utils.ts
+│       │   └── errors/app.error.ts
+│       └── validators/
+│           └── auth.validator.ts
+│
+├── solana/
+│   └── programs/breezo/src/
+│       └── lib.rs                       # Anchor smart contract
+│
+├── firmware/
+│   └── breezo_node.ino                  # ESP32 firmware
+│
+└── scripts/
+    ├── sign-link-verify.ts              # generate link/verify signature
+    └── sign-ingest.ts                   # generate ingest signature
 ```
 
 ---
 
-# 🔐 Authentication Module
+## Environment setup
 
-## 1. Register User
+Create a `.env` file in `server/`:
 
-### Endpoint
+```env
+PORT=3501
+MONGO_URI=mongodb://localhost:27017/breezo
+JWT_SECRET=your_jwt_secret_here
+
+# Backend Solana wallet private key (base58) — this wallet pays for on-chain accounts
+PRIVATE_KEY=your_solana_wallet_private_key_base58
 ```
 
-POST /auth/signup
+Install dependencies and run:
 
-````
+```bash
+cd server
+npm install
+npm run dev
+```
 
-### Request Body
+Deploy the Solana program:
+
+```bash
+cd solana
+anchor build
+anchor deploy --provider.cluster devnet
+cp target/idl/breezo.json ../server/src/idl/breezo.json
+```
+
+---
+
+## Database models
+
+### User
+
+| Field | Type | Description |
+|---|---|---|
+| `fullName` | String | User's display name |
+| `email` | String | Unique, used for login |
+| `password` | String | bcrypt hashed |
+| `role` | Enum | `User` \| `Node` \| `Admin` |
+| `wallet` | String | Solana wallet address |
+
+### Node (device registry)
+
+| Field | Type | Description |
+|---|---|---|
+| `nodeId` | String | Unique device identifier e.g. `NODE_001` |
+| `devicePublicKey` | String | Ed25519 public key (base58) |
+| `ownerEmail` | String | Links to User |
+| `ownerWallet` | String | Solana wallet of owner |
+| `nodeAccount` | String | On-chain Solana account address (set after linking) |
+| `isLinked` | Boolean | True after link/verify completes |
+| `linkChallenge` | String | Temporary challenge for signing (cleared after use) |
+
+### NodeLatest (live state)
+
+| Field | Type | Description |
+|---|---|---|
+| `nodeId` | String | References Node |
+| `temperature` | Number | °C from DHT22 |
+| `humidity` | Number | % from DHT22 |
+| `pm25` | Number | µg/m³ from SDS011 |
+| `pm10` | Number | µg/m³ from SDS011 |
+| `aqi` | Number | Computed AQI score |
+| `aqiLevel` | String | `GOOD` \| `MODERATE` \| `UNHEALTHY_SENSITIVE` \| `VERY_UNHEALTHY` \| `HAZARDOUS` |
+| `reward` | Number | Accumulated reward (resets after Solana sync) |
+| `syncing` | Boolean | True while Solana sync is in progress |
+| `location` | Object | `{ lat, lng }` |
+| `lastSeen` | Date | Timestamp of last ingest |
+
+---
+
+## API reference
+
+### POST /auth/signup
+
+Register a new user account. Returns a JWT immediately.
+
+**Request**
 ```json
 {
-  "fullName": "John Doe",
-  "email": "john@test.com",
-  "password": "12345678",
-  "role": "User"
-}
-````
-
-### Description
-
-Creates a new user account and returns authentication token.
-
----
-
-## 2. Login User
-
-### Endpoint
-
-```
-POST /auth/login
-```
-
-### Request Body
-
-```json
-{
-  "email": "john@test.com",
-  "password": "12345678"
+  "fullName": "Aether Node Owner",
+  "email":    "owner@breezo.io",
+  "password": "SecurePass123!",
+  "wallet":   "44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"
 }
 ```
 
-### Response
-
+**Response**
 ```json
 {
   "success": true,
-  "token": "jwt_token"
-}
-```
-
-### Description
-
-Authenticates user and returns JWT token for protected routes.
-
----
-
-# 📡 IoT Node Module
-
-## 3. Sensor Data Ingestion (ESP32)
-
-### Endpoint
-
-```
-POST /node/ingest
-```
-
-### Who Uses This?
-
-👉 ESP32 IoT devices
-
-### Request Body
-
-```json
-{
-  "nodeId": "node-001",
-  "ownerEmail": "john@test.com",
-  "temperature": 25,
-  "humidity": 60,
-  "pm25": 120,
-  "pm10": 80,
-  "aqi": 150,
-  "aqiLevel": "Unhealthy",
-  "location": {
-    "lat": 27.7172,
-    "lng": 85.3240
+  "data": {
+    "id":       "68ebdbd2bd05c0bcfaa9cc19",
+    "fullName": "Aether Node Owner",
+    "email":    "owner@breezo.io",
+    "role":     "User",
+    "wallet":   "44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy",
+    "token":    "eyJhbGciOiJIUzI1NiJ9..."
   }
 }
 ```
 
-### Backend Processing Flow
-
-On every request:
-
-1. Upsert latest node data in `NodeLatest`
-2. Store historical data in `SensorHistory`
-3. Increment reward (`+0.001`)
-4. Maintain node ownership mapping
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Data ingested successfully"
-}
-```
+**What it does internally**
+1. Check email uniqueness — throw `ConflictError` if taken
+2. Hash password with `bcrypt` (10 rounds)
+3. Save user to MongoDB including `wallet`
+4. Sign JWT with `{ userId, email, role, wallet }` — expiry 1 year
+5. Return user object + token
 
 ---
 
-## 4. Public Map Data (Leaflet / Mapbox)
+### POST /auth/login
 
-### Endpoint
+Authenticate and get a fresh JWT. Always re-login after adding `wallet` to the schema to get a token that includes it.
 
+**Request**
+```json
+{
+  "email":    "owner@breezo.io",
+  "password": "SecurePass123!"
+}
 ```
-GET /map/nodes
-```
 
-### Who Uses This?
-
-👉 Public frontend (no authentication required)
-
-### Description
-
-Returns all active nodes with latest sensor data for map visualization.
-
-### Response
-
+**Response**
 ```json
 {
   "success": true,
-  "count": 2,
+  "data": {
+    "id":     "68ebdbd2bd05c0bcfaa9cc19",
+    "email":  "owner@breezo.io",
+    "wallet": "44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy",
+    "token":  "eyJhbGciOiJIUzI1NiJ9..."
+  }
+}
+```
+
+**What it does internally**
+1. Find user by email — throw `NotFoundError` if missing
+2. `bcrypt.compare` password against hash
+3. Sign JWT including `wallet: user.wallet`
+4. Return token
+
+> **Save this token.** Use it as `Authorization: Bearer <token>` on all authenticated routes.
+
+---
+
+### POST /node/create
+
+Register an ESP32 device in MongoDB. This is a setup step — does not touch Solana. The `devicePublicKey` must match the Ed25519 key stored on the physical device.
+
+**Headers**
+```
+Authorization: Bearer <token>
+```
+
+**Request**
+```json
+{
+  "nodeId":          "NODE_001",
+  "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz",
+  "ownerEmail":      "owner@breezo.io",
+  "ownerWallet":     "44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"
+}
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "data": {
+    "nodeId":          "NODE_001",
+    "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz",
+    "ownerEmail":      "owner@breezo.io",
+    "isLinked":        false,
+    "nodeAccount":     null
+  }
+}
+```
+
+**What it does internally**
+1. Check `nodeId` not already registered
+2. Create `Node` document in MongoDB (`isLinked: false`, `nodeAccount: null`)
+3. Create `NodeLatest` placeholder document with all sensors at 0
+
+---
+
+### POST /node/link/request
+
+Step 1 of the device linking flow. Issues a cryptographic challenge that the device must sign. Proves the caller physically controls the device's private key.
+
+**Headers**
+```
+Authorization: Bearer <token>
+```
+
+**Request**
+```json
+{
+  "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz"
+}
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "data": {
+    "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz",
+    "challenge":       "a3f9c12e847b3d1f0e...64-char hex...91f0c2"
+  }
+}
+```
+
+**What it does internally**
+1. Find device by `devicePublicKey`
+2. Generate `crypto.randomBytes(32).toString('hex')` as challenge
+3. Store challenge in `Node.linkChallenge`
+4. Return challenge to caller
+
+> **Save the challenge string.** You must sign it in the next step.
+
+---
+
+### POST /node/link/verify
+
+Step 2 of the device linking flow. Verifies the Ed25519 signature of the challenge, then creates a Solana `NodeAccount` on devnet. The backend wallet pays rent. The user's wallet is stored as the owner on-chain but does not need to sign.
+
+**Headers**
+```
+Authorization: Bearer <token>
+```
+
+**Request**
+```json
+{
+  "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz",
+  "signature":       "3Vge8JU8UxgeAsyH...base58 Ed25519 signature of challenge...fAf4"
+}
+```
+
+**Response**
+```json
+{
+  "success": true,
+  "data": {
+    "nodeId":      "NODE_001",
+    "isLinked":    true,
+    "nodeAccount": "J9WpHHwftv7JFGcZjiDH4vXePcGV7ddL3K9YiMycww22"
+  }
+}
+```
+
+**What it does internally**
+1. Fetch node, verify `linkChallenge` exists
+2. `nacl.sign.detached.verify(challenge, signature, devicePublicKey)`
+3. Generate fresh `Keypair` for the on-chain `NodeAccount`
+4. Call `program.methods.initNode()` with accounts: `nodeAccount`, `owner` (user wallet), `authority` (backend wallet — signer + payer), `devicePublicKey`, `systemProgram`
+5. Save `nodeAccount` address to MongoDB, set `isLinked: true`
+
+---
+
+### POST /node/ingest
+
+Hot path — called by the ESP32 every 15 seconds. No JWT. The payload must be signed with the device's Ed25519 private key. Timestamp must be within 60 seconds (replay protection).
+
+**No auth header — device route only**
+
+**Request**
+```json
+{
+  "nodeId":    "NODE_001",
+  "timestamp": 1745123456789,
+  "signature": "4Tz9...base58 sig of JSON.stringify({payload,timestamp})...Xm1",
+  "payload": {
+    "temperature": 28.5,
+    "humidity":    62.3,
+    "pm25":        42.0,
+    "pm10":        67.8,
+    "aqi":         112,
+    "aqiLevel":    "MODERATE",
+    "location":    { "lat": 28.6139, "lng": 77.2090 }
+  }
+}
+```
+
+> **Critical:** `signature` must be the Ed25519 signature of the exact string `JSON.stringify({ payload, timestamp })` — key order matters.
+
+**Response**
+```json
+{
+  "success": true,
+  "data": {
+    "nodeId":      "NODE_001",
+    "temperature": 28.5,
+    "humidity":    62.3,
+    "pm25":        42.0,
+    "pm10":        67.8,
+    "aqi":         112,
+    "aqiLevel":    "MODERATE",
+    "reward":      0.02,
+    "syncing":     false,
+    "lastSeen":    "2026-04-25T10:30:00.000Z"
+  }
+}
+```
+
+**What it does internally**
+1. Find node by `nodeId` — reject if not found or `isLinked: false`
+2. Reject if `timestamp` older than 60 seconds (replay protection)
+3. Reconstruct `message = JSON.stringify({ payload, timestamp })`
+4. `nacl.sign.detached.verify(message, signature, devicePublicKey)`
+5. `calculateReward(pm25)` → upsert `NodeLatest`, accumulate reward
+6. If `reward >= 10` and not already `syncing` → `markSyncing()` → fire `syncToSolanaAsync()` (fire-and-forget)
+
+---
+
+### GET /node/dashboard
+
+Returns all `NodeLatest` records for the authenticated user. This is the data source for a frontend dashboard.
+
+**Headers**
+```
+Authorization: Bearer <token>
+```
+
+**Response**
+```json
+{
+  "success": true,
   "data": [
     {
-      "nodeId": "node-001",
-      "lat": 27.7172,
-      "lng": 85.3240,
-      "aqi": 150,
-      "aqiLevel": "Unhealthy",
-      "temperature": 25,
-      "pm25": 120,
-      "pm10": 80,
-      "reward": 4.12,
-      "updatedAt": "2026-04-23T10:00:00Z"
+      "nodeId":      "NODE_001",
+      "temperature": 28.5,
+      "humidity":    62.3,
+      "pm25":        42.0,
+      "pm10":        67.8,
+      "aqi":         112,
+      "aqiLevel":    "MODERATE",
+      "reward":      3.14,
+      "syncing":     false,
+      "location":    { "lat": 28.6139, "lng": 77.2090 },
+      "lastSeen":    "2026-04-25T10:30:00.000Z"
     }
   ]
 }
 ```
 
-### Purpose
-
-Provides real-time geospatial data for Leaflet/Mapbox visualization.
-
 ---
 
-## 5. User Dashboard (Protected)
+### POST /node/reward/claim
 
-### Endpoint
+Triggers the `claimReward` Solana instruction — transfers lamports from the `NodeAccount` to the owner's wallet. Resets the reward counter in MongoDB.
 
+> **Note:** `claimReward` requires the owner to sign the transaction. In production this should return an unsigned transaction for the frontend (Phantom wallet) to sign. The current backend implementation works only when the backend wallet is also the owner (dev/test only).
+
+**Headers**
 ```
-GET /node/dashboard
-```
-
-### Headers
-
-```
-Authorization: Bearer <jwt_token>
+Authorization: Bearer <token>
 ```
 
-### Who Uses This?
+**Request**
+```json
+{
+  "nodeId": "NODE_001"
+}
+```
 
-👉 Authenticated users only
-
-### Description
-
-Returns user-owned nodes and total rewards.
-
-### Response
-
+**Response**
 ```json
 {
   "success": true,
-  "data": {
-    "nodes": [
-      {
-        "nodeId": "node-001",
-        "aqi": 150,
-        "reward": 4.12
-      }
-    ],
-    "totalReward": 12.45
-  }
+  "data": { "success": true }
 }
 ```
 
 ---
 
-# 💰 Reward System
+## Reward engine
 
-### Rule
-
-Each valid sensor ingestion request:
-
+```typescript
+calculateReward(pm25: number): number {
+  if (pm25 > 300) return 0;      // sensor fault or extreme pollution
+  if (pm25 < 50)  return 0.02;   // clean air bonus
+  if (pm25 < 100) return 0.01;   // moderate
+  return 0.005;                   // polluted but reporting
+}
 ```
-reward += 0.001
-```
 
-### Stored In
-
-* `NodeLatest.reward`
-
-### Future Upgrade
-
-* Aggregate into `User.totalEarnings`
+When `reward >= 10`, the backend fires `syncToSolanaAsync()` which calls `addReward` on-chain (converting to lamports via `reward * 1e9`), then resets the local counter. The `syncing` flag prevents concurrent sync attempts.
 
 ---
 
-# 📊 Data Models
+## Solana program
 
-## NodeLatest (Real-time State)
+Program ID: `5ygRCA7pF2h7GeGxP9RaiNQNTNb5J5GnB9XSzxh75gVw`
 
-```
-nodeId
-ownerEmail
-temperature
-humidity
-pm25
-pm10
-aqi
-aqiLevel
-location { lat, lng }
-reward
-updatedAt
+### NodeAccount struct
+
+```rust
+pub struct NodeAccount {
+    pub owner:             Pubkey,  // user wallet stored on-chain
+    pub device_public_key: Pubkey,  // ESP32 Ed25519 public key
+    pub reward_balance:    u64,     // lamports accumulated
+}
 ```
 
-## SensorHistory (Analytics)
+### Instructions
 
-```
-nodeId
-temperature
-humidity
-pm25
-pm10
-aqi
-timestamp
-```
-
-## User
-
-```
-fullName
-email
-password
-role
-totalEarnings
-```
+| Instruction | Signer | Description |
+|---|---|---|
+| `initNode` | `authority` (backend), `nodeAccount` (new keypair) | Creates the account. Backend pays rent. Owner stored but does not sign. |
+| `addReward(amount: u64)` | `authority` (backend) | Adds lamports to `reward_balance`. Checks caller is the stored owner. |
+| `claimReward` | `owner` (user wallet) | Transfers all lamports to owner. Requires user signature. |
 
 ---
 
-# 🔄 System Workflow
+## ESP32 firmware
 
-## 1. ESP32 Device Flow
+The firmware (`breezo_node.ino`) handles:
 
+- WiFi connection + NTP time sync (UTC milliseconds)
+- DHT22 reading (temperature, humidity)
+- SDS011 reading (PM2.5, PM10)
+- MQ135 reading (CO2 approximation)
+- Hybrid AQI computation
+- Ed25519 message signing via `Ed25519.h`
+- JSON payload construction via `ArduinoJson`
+- HTTP POST to `/node/ingest` every 15 seconds
+
+**Required Arduino libraries:**
 ```
-Sensor Data →
-POST /node/ingest →
-Backend Processing →
-MongoDB Update →
-Reward Increment
+ArduinoJson        — Benoit Blanchon
+DHT sensor library — Adafruit
+SdsDustSensor      — lewapek
+Ed25519            — rweather/arduinolibs
+ArduinoBase58      — eranpeer
 ```
 
 ---
 
-## 2. Public Map Flow
+## Complete test walkthrough
 
-```
-Frontend →
-GET /map/nodes →
-Receive NodeLatest Data →
-Render on Leaflet/Mapbox
-```
+### Step 1 — Sign up
+```http
+POST /auth/signup
+Content-Type: application/json
 
----
-
-## 3. User Dashboard Flow
-
-```
-Login →
-GET /node/dashboard →
-Return Owned Nodes + Earnings
+{
+  "fullName": "Aether Node Owner",
+  "email":    "owner@breezo.io",
+  "password": "SecurePass123!",
+  "wallet":   "44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"
+}
 ```
 
----
+### Step 2 — Login (get fresh JWT with wallet)
+```http
+POST /auth/login
+Content-Type: application/json
 
-# 🗺️ Map System Rules
+{
+  "email":    "owner@breezo.io",
+  "password": "SecurePass123!"
+}
+```
+> Save the `token` from the response.
 
-### AQI Color Mapping
+### Step 3 — Register device
+```http
+POST /node/create
+Authorization: Bearer <token>
+Content-Type: application/json
 
-* 🟢 0–50 → Good
-* 🟡 51–100 → Moderate
-* 🟠 101–150 → Unhealthy for sensitive groups
-* 🔴 151–200 → Unhealthy
-* 🟣 200+ → Hazardous
-
----
-
-# ⚙️ Environment Variables
-
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_secret_key
+{
+  "nodeId":          "NODE_001",
+  "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz",
+  "ownerEmail":      "owner@breezo.io",
+  "ownerWallet":     "44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"
+}
 ```
 
----
+### Step 4 — Request link challenge
+```http
+POST /node/link/request
+Authorization: Bearer <token>
+Content-Type: application/json
 
-# 🚀 Run the Project
+{
+  "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz"
+}
+```
+> Save the `challenge` hex string from the response.
 
+### Step 5 — Sign the challenge
 ```bash
-npm install
-npm run dev
+npx ts-node scripts/sign-link-verify.ts
+# paste the challenge into the script first
 ```
 
-Server runs at:
+### Step 6 — Verify link (creates Solana account)
+```http
+POST /node/link/verify
+Authorization: Bearer <token>
+Content-Type: application/json
 
+{
+  "devicePublicKey": "4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz",
+  "signature":       "<base58 output from sign-link-verify.ts>"
+}
 ```
-http://localhost:5000
+
+### Step 7 — Generate ingest signature
+```bash
+npx ts-node scripts/sign-ingest.ts
+# copy the timestamp and signature from output
+```
+
+### Step 8 — Submit sensor reading
+```http
+POST /node/ingest
+Content-Type: application/json
+
+{
+  "nodeId":    "NODE_001",
+  "timestamp": <timestamp from script>,
+  "signature": "<signature from script>",
+  "payload": {
+    "temperature": 28.5,
+    "humidity":    62.3,
+    "pm25":        42.0,
+    "pm10":        67.8,
+    "aqi":         112,
+    "aqiLevel":    "MODERATE",
+    "location":    { "lat": 28.6139, "lng": 77.2090 }
+  }
+}
+```
+
+### Step 9 — View dashboard
+```http
+GET /node/dashboard
+Authorization: Bearer <token>
+```
+
+### Step 10 — Claim reward
+```http
+POST /node/reward/claim
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "nodeId": "NODE_001"
+}
 ```
 
 ---
 
-# 🎯 Project Goal
+## Signature helper scripts
 
-Breezo simulates a decentralized environmental monitoring network where:
+### scripts/sign-link-verify.ts
+```typescript
+import nacl from "tweetnacl";
+import bs58  from "bs58";
 
-* IoT devices stream real-time air quality data
-* Data is stored and processed in real time
-* Users visualize global pollution maps
-* Contributors earn rewards per sensor update
+const DEVICE_PRIVATE_KEY = "2GZkTAT6eK3Upt...your key...JMjNAY";
+const challenge          = "PASTE_CHALLENGE_HEX_HERE";
 
+const keypair   = nacl.sign.keyPair.fromSecretKey(bs58.decode(DEVICE_PRIVATE_KEY));
+const signature = nacl.sign.detached(new TextEncoder().encode(challenge), keypair.secretKey);
 
+console.log("devicePublicKey:", bs58.encode(keypair.publicKey));
+console.log("signature:      ", bs58.encode(signature));
+```
+
+### scripts/sign-ingest.ts
+```typescript
+import nacl from "tweetnacl";
+import bs58  from "bs58";
+
+const DEVICE_PRIVATE_KEY = "2GZkTAT6eK3Upt...your key...JMjNAY";
+
+const timestamp = Date.now();
+const payload   = {
+  temperature: 28.5, humidity: 62.3,
+  pm25: 42.0,        pm10: 67.8,
+  aqi: 112,          aqiLevel: "MODERATE",
+  location: { lat: 28.6139, lng: 77.2090 }
+};
+
+const message   = JSON.stringify({ payload, timestamp });
+const keypair   = nacl.sign.keyPair.fromSecretKey(bs58.decode(DEVICE_PRIVATE_KEY));
+const signature = nacl.sign.detached(new TextEncoder().encode(message), keypair.secretKey);
+
+console.log("timestamp:", timestamp);
+console.log("signature:", bs58.encode(signature));
+```

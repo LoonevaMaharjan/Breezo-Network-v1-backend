@@ -3,20 +3,12 @@ import { z } from "zod";
 /**
  * SIGNUP VALIDATION
  */
+// validators/auth.validator.ts
 export const signUpSchema = z.object({
-    fullName: z
-        .string()
-        .min(2, "Full name must be at least 2 characters"),
-
-    email: z
-        .string()
-        .email("Invalid email format"),
-
-    password: z
-        .string()
-        .min(6, "Password must be at least 6 characters"),
-
-    role: z.enum(["User", "Node", "Admin"]),
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+  wallet: z.string().optional(), // 👈 add this
 });
 
 /**

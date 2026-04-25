@@ -1,10 +1,34 @@
 import { NodeLatest } from "../models/nodelatest.model";
 
-
 export class NodeLatestRepository {
 
     /**
-     * Get all nodes for public map
+     * 🔄 UPSERT SENSOR DATA + REWARD
+     */
+    async upsertNodeLatest(data: any, rewardIncrement: number) {
+
+        const { nodeId } = data;
+
+        return NodeLatest.findOneAndUpdate(
+            { nodeId },
+            {
+                $set: {
+                    ...data,
+                    lastSeen: new Date()
+                },
+                $inc: {
+                    reward: rewardIncrement
+                }
+            },
+            {
+                upsert: true,
+                new: true
+            }
+        );
+    }
+
+    /**
+     * 📊 GET ALL NODES (MAP VIEW)
      */
     async getAllNodesForMap() {
         return NodeLatest.find({}, {
@@ -18,14 +42,69 @@ export class NodeLatestRepository {
             aqiLevel: 1,
             reward: 1,
             location: 1,
+            lastSeen: 1,
             updatedAt: 1
         });
     }
 
     /**
-     * Get single node (optional)
+     * 🔍 FIND SINGLE NODE STATE
      */
-    async getNodeById(nodeId: string) {
+    async findNodeLatest(nodeId: string) {
         return NodeLatest.findOne({ nodeId });
+    }
+
+    /**
+     * 🔐 MARK SYNCING (avoid duplicate Solana calls)
+     */
+    async markSyncing(nodeId: string) {
+        return NodeLatest.updateOne(
+            { nodeId },
+            { syncing: true }
+        );
+    }
+
+    /**
+     * 🔓 CLEAR SYNC FLAG
+     */
+    async clearSyncFlag(nodeId: string) {
+        return NodeLatest.updateOne(
+            { nodeId },
+            { syncing: false }
+        );
+    }
+
+    /**
+     * 💰 RESET REWARD AFTER ONCHAIN SYNC
+     */
+    async resetReward(nodeId: string) {
+        return NodeLatest.findOneAndUpdate(
+            { nodeId },
+            { reward: 0 },
+            { new: true }
+        );
+    }
+
+    /**
+     * 📡 GET USER NODES (DASHBOARD)
+     */
+    async getNodesByEmail(email: string) {
+        return NodeLatest.find({ ownerEmail: email });
+    }
+
+    /**
+     * ⚡ UPDATE ONLY SENSOR DATA (optional fast path)
+     */
+    async updateSensorData(nodeId: string, data: any) {
+        return NodeLatest.findOneAndUpdate(
+            { nodeId },
+            {
+                $set: {
+                    ...data,
+                    lastSeen: new Date()
+                }
+            },
+            { new: true }
+        );
     }
 }

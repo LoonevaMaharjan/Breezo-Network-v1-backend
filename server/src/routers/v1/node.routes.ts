@@ -2,28 +2,58 @@ import { Router } from "express";
 import { NodeController } from "../../controllers/node.controller";
 import { NodeRepository } from "../../repositories/node.repository";
 import { NodeService } from "../../service/node.service";
-import { validateRequestBody } from "../../validators";
-import { nodeDataSchema } from "../../validators/node.validator";
 import { isAuthenticated } from "../../middlewares/isAuth.middleware";
+import { NodeLatestRepository } from "../../repositories/nodeLatest.repository";
+import { SolanaClient } from "../../blockchain/solana.client";
 
-const nodeRouter = Router();
-
-const nodeRepository = new NodeRepository();
-const nodeService = new NodeService(nodeRepository);
-const nodeController = new NodeController(nodeService);
+const router = Router();
 
 /**
- * Device → send data
+
+ *  DEPENDENCY INJECTION
+
  */
-nodeRouter.post(
-  "/ingest",
-  validateRequestBody(nodeDataSchema),
-  nodeController.ingest,
-);
+const nodeRepo = new NodeRepository();
+const nodeLatestRepo = new NodeLatestRepository();
+const solana = new SolanaClient();
+
+const service = new NodeService(nodeRepo, nodeLatestRepo, solana);
+const controller = new NodeController(service);
+
+router.post("/create", isAuthenticated, controller.createNode);
 
 /**
- * User → dashboard
- */
-nodeRouter.get("/dashboard",isAuthenticated , nodeController.dashboard);
 
-export default nodeRouter;
+ * DEVICE ROUTES (ESP32)
+
+ * secure ingestion with signature verification
+ */
+router.post("/ingest", controller.ingest);
+
+/**
+
+ *  USER DASHBOARD
+
+ * user sees all nodes + rewards
+ */
+router.get("/dashboard", isAuthenticated, controller.dashboard);
+
+/**
+
+ *  NODE LINKING FLOW
+
+ * 1️⃣ request challenge
+ * 2️⃣ verify + link node
+ */
+router.post("/link/request", isAuthenticated, controller.requestLink);
+router.post("/link/verify", isAuthenticated, controller.verifyLink);
+
+/**
+
+ *  REWARD SYSTEM
+
+ * claim on-chain reward
+ */
+router.post("/reward/claim", isAuthenticated, controller.claimReward);
+
+export default router;

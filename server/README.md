@@ -1,384 +1,93 @@
-
-#  Breezo Backend API
-
-
-This repository contains the backend system for **Breezo**, a decentralized IoT-based air quality monitoring platform where ESP32 devices send real-time environmental sensor data to a server. The backend processes, stores, and exposes this data for public visualization (maps) and user dashboards.
+Here's a clean summary:
 
 ---
 
-# 🚀 Base URL
+## 🌿 NodeService — What It Does
 
-```
-
-[http://localhost:5000/api/v1](http://localhost:5000/api/v1)
-
-```
+This service is the **core backend brain** of your DePIN (Decentralized Physical Infrastructure) project. It manages air quality sensor nodes (ESP32 devices), links them to Solana wallets, ingests their data, and distributes token rewards on-chain.
 
 ---
 
-# 🧠 System Architecture
+### 📡 `ingestData` — Receive Sensor Reading from ESP32
+The ESP32 device sends air quality data (temperature, humidity, PM2.5, PM10, AQI) to your backend. The service:
+- Checks the node exists and is linked
+- Rejects requests older than 60 seconds (replay attack protection)
+- Verifies the device's **NaCl cryptographic signature** so fake data can't be submitted
+- Saves the latest reading to the database
+- Calculates a **token reward** based on PM2.5 value
+- If accumulated reward hits **10 tokens**, automatically triggers a Solana sync
+
+---
+
+### 🔗 `requestLink` — Start Device Linking
+When a user wants to link their ESP32 to their wallet, this generates a **random challenge string** and saves it against the device. The device must sign this challenge to prove it owns the private key.
+
+---
+
+### 🔐 `verifyLink` — Complete Device Linking
+Takes the signed challenge back from the device, verifies the signature, then:
+- Creates a **Node PDA account on Solana**
+- Saves the wallet + email association to the database
+- The node is now fully linked and ready to earn rewards
+
+---
+
+### 🧱 `createNodeOnChain` — Deploy Node PDA to Solana
+Derives a **Program Derived Address (PDA)** from the device's public key and calls `initNode` on your Anchor program to register it on-chain. This is the permanent on-chain identity of the sensor.
+
+---
+
+### 🔄 `syncToSolanaAsync` — Fire-and-Forget Solana Sync
+A safe wrapper around the actual sync. Calls `syncToSolana`, then resets the reward counter. If anything fails, it logs the error. The `syncing` flag is **always cleared** in the `finally` block so the node never gets stuck in a locked state.
+
+---
+
+### ⛓️ `syncToSolana` — Write Reward to Solana
+The actual on-chain call. Verifies the on-chain owner matches the expected wallet (security check), then calls `addReward` on your Anchor program to **credit tokens to the node account** on-chain.
+
+---
+
+### 💰 `claimReward` — User Claims Their Tokens
+A user calls this to withdraw earned tokens. Verifies they own the node, checks there's a reward balance, then calls `claimReward` on Solana — transferring tokens to the **owner's wallet**. Resets the reward counter after.
+
+---
+
+### 🧠 `calculateReward` — Reward Engine Logic
+Simple pure function. Better air quality = higher reward:
+
+| PM2.5 | Reward |
+|---|---|
+| Under 50 (Clean) | 0.02 tokens |
+| 50–100 (Moderate) | 0.01 tokens |
+| 100–300 (Polluted) | 0.005 tokens |
+| Over 300 (Hazardous) | 0 tokens |
+
+---
+
+### 📊 `getUserDashboard` — Fetch All User Nodes
+Returns all nodes and their latest readings for a given user email. Powers the frontend dashboard.
+
+---
+
+### 🧱 `createNode` — Register a New Node (Off-chain)
+Admin/setup function. Registers a new ESP32 device in the database with its nodeId and device public key, and creates an empty `NodeLatest` record ready to receive data.
+
+---
+
+### 🔁 Overall Data Flow
 
 ```
-
 ESP32 Device
-↓
-POST /node/ingest
-↓
-Express Backend (Validation + Processing)
-↓
-MongoDB
-├── NodeLatest (real-time map data)
-├── SensorHistory (analytics)
-└── User (authentication + rewards)
-↓
-API Layer
-├── /map/nodes (public map data)
-└── /node/dashboard (user analytics)
+    │
+    ▼
+ingestData() ──► verify signature ──► save reading ──► calculate reward
+                                                              │
+                                              reward >= 10?  │
+                                                    ▼
+                                          syncToSolana() ──► addReward (on-chain)
 
+User App
+    │
+    ▼
+claimReward() ──► verify ownership ──► claimReward (on-chain) ──► tokens in wallet
 ```
-
----
-
-# 🔐 Authentication Module
-
-## 1. Register User
-
-### Endpoint
-```
-
-POST /auth/signup
-
-````
-
-### Request Body
-```json
-{
-  "fullName": "John Doe",
-  "email": "john@test.com",
-  "password": "12345678",
-  "role": "User"
-}
-````
-
-### Description
-
-Creates a new user account and returns authentication token.
-
----
-
-## 2. Login User
-
-### Endpoint
-
-```
-POST /auth/login
-```
-
-### Request Body
-
-```json
-{
-  "email": "john@test.com",
-  "password": "12345678"
-}
-```
-
-### Response
-
-```json
-{
-  "success": true,
-  "token": "jwt_token"
-}
-```
-
-### Description
-
-Authenticates user and returns JWT token for protected routes.
-
----
-
-# 📡 IoT Node Module
-
-## 3. Sensor Data Ingestion (ESP32)
-
-### Endpoint
-
-```
-POST /node/ingest
-```
-
-### Who Uses This?
-
-👉 ESP32 IoT devices
-
-### Request Body
-
-```json
-{
-  "nodeId": "node-001",
-  "ownerEmail": "john@test.com",
-  "temperature": 25,
-  "humidity": 60,
-  "pm25": 120,
-  "pm10": 80,
-  "aqi": 150,
-  "aqiLevel": "Unhealthy",
-  "location": {
-    "lat": 27.7172,
-    "lng": 85.3240
-  }
-}
-```
-
-### Backend Processing Flow
-
-On every request:
-
-1. Upsert latest node data in `NodeLatest`
-2. Store historical data in `SensorHistory`
-3. Increment reward (`+0.001`)
-4. Maintain node ownership mapping
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "Data ingested successfully"
-}
-```
-
----
-
-## 4. Public Map Data (Leaflet / Mapbox)
-
-### Endpoint
-
-```
-GET /map/nodes
-```
-
-### Who Uses This?
-
-👉 Public frontend (no authentication required)
-
-### Description
-
-Returns all active nodes with latest sensor data for map visualization.
-
-### Response
-
-```json
-{
-  "success": true,
-  "count": 2,
-  "data": [
-    {
-      "nodeId": "node-001",
-      "lat": 27.7172,
-      "lng": 85.3240,
-      "aqi": 150,
-      "aqiLevel": "Unhealthy",
-      "temperature": 25,
-      "pm25": 120,
-      "pm10": 80,
-      "reward": 4.12,
-      "updatedAt": "2026-04-23T10:00:00Z"
-    }
-  ]
-}
-```
-
-### Purpose
-
-Provides real-time geospatial data for Leaflet/Mapbox visualization.
-
----
-
-## 5. User Dashboard (Protected)
-
-### Endpoint
-
-```
-GET /node/dashboard
-```
-
-### Headers
-
-```
-Authorization: Bearer <jwt_token>
-```
-
-### Who Uses This?
-
-👉 Authenticated users only
-
-### Description
-
-Returns user-owned nodes and total rewards.
-
-### Response
-
-```json
-{
-  "success": true,
-  "data": {
-    "nodes": [
-      {
-        "nodeId": "node-001",
-        "aqi": 150,
-        "reward": 4.12
-      }
-    ],
-    "totalReward": 12.45
-  }
-}
-```
-
----
-
-# 💰 Reward System
-
-### Rule
-
-Each valid sensor ingestion request:
-
-```
-reward += 0.001
-```
-
-### Stored In
-
-* `NodeLatest.reward`
-
-### Future Upgrade
-
-* Aggregate into `User.totalEarnings`
-
----
-
-# 📊 Data Models
-
-## NodeLatest (Real-time State)
-
-```
-nodeId
-ownerEmail
-temperature
-humidity
-pm25
-pm10
-aqi
-aqiLevel
-location { lat, lng }
-reward
-updatedAt
-```
-
-## SensorHistory (Analytics)
-
-```
-nodeId
-temperature
-humidity
-pm25
-pm10
-aqi
-timestamp
-```
-
-## User
-
-```
-fullName
-email
-password
-role
-totalEarnings
-```
-
----
-
-# 🔄 System Workflow
-
-## 1. ESP32 Device Flow
-
-```
-Sensor Data →
-POST /node/ingest →
-Backend Processing →
-MongoDB Update →
-Reward Increment
-```
-
----
-
-## 2. Public Map Flow
-
-```
-Frontend →
-GET /map/nodes →
-Receive NodeLatest Data →
-Render on Leaflet/Mapbox
-```
-
----
-
-## 3. User Dashboard Flow
-
-```
-Login →
-GET /node/dashboard →
-Return Owned Nodes + Earnings
-```
-
----
-
-# 🗺️ Map System Rules
-
-### AQI Color Mapping
-
-* 🟢 0–50 → Good
-* 🟡 51–100 → Moderate
-* 🟠 101–150 → Unhealthy for sensitive groups
-* 🔴 151–200 → Unhealthy
-* 🟣 200+ → Hazardous
-
----
-
-# ⚙️ Environment Variables
-
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_secret_key
-```
-
----
-
-# 🚀 Run the Project
-
-```bash
-npm install
-npm run dev
-```
-
-Server runs at:
-
-```
-http://localhost:5000
-```
-
----
-
-# 🎯 Project Goal
-
-Breezo simulates a decentralized environmental monitoring network where:
-
-* IoT devices stream real-time air quality data
-* Data is stored and processed in real time
-* Users visualize global pollution maps
-* Contributors earn rewards per sensor update
-
-

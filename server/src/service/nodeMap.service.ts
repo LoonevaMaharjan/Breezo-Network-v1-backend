@@ -2,13 +2,13 @@ import { NodeLatestRepository } from "../repositories/nodeLatest.repository";
 
 export class NodeMapService {
 
-    constructor(private nodeRepo: NodeLatestRepository) {}
+    constructor(private nodeLatestRepo: NodeLatestRepository) {}
 
     /**
      * Format data for Leaflet/Mapbox
      */
     async getMapNodes() {
-        const nodes = await this.nodeRepo.getAllNodesForMap();
+        const nodes = await this.nodeLatestRepo.getAllNodesForMap();
 
         // transform for frontend map usage
         return nodes.map(node => ({
@@ -21,7 +21,6 @@ export class NodeMapService {
             pm25: node.pm25,
             pm10: node.pm10,
             reward: node.reward,
-            updatedAt: node.updatedAt
         }));
     }
 }

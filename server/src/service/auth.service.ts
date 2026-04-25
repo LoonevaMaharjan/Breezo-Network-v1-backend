@@ -21,68 +21,73 @@ export interface IAuthService {
 export class AuthService implements IAuthService {
     constructor(private userRepository: IUserRepository) {}
 
-    async signUp(data: SignUpDTO) {
-        const { fullName, email, password, role } = data;
+  async signUp(data: SignUpDTO) {
+  const { fullName, email, password, role, wallet } = data; // 👈 destructure
 
-        const existingUser = await this.userRepository.findByEmail(email);
+  const existingUser = await this.userRepository.findByEmail(email);
 
-        if (existingUser) {
-            throw new ConflictError("Email already registered");
-        }
+  if (existingUser) {
+    throw new ConflictError("Email already registered");
+  }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-        const user = await this.userRepository.createUser({
-            fullName,
-            email,
-            password: hashedPassword,
-            role,
-        });
+  const user = await this.userRepository.createUser({
+    fullName,
+    email,
+    password: hashedPassword,
+    role,
+    wallet, // 👈 persist
+  });
 
-        const token = generateToken({
-            userId: user._id,
-            email: user.email,
-            role: user.role,
-        });
+  const token = generateToken({
+    userId: user._id,
+    email: user.email,
+    role: user.role,
+    wallet: user.wallet, // 👈 include in JWT
+  });
 
-        return {
-            id: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            role: user.role,
-            token,
-        };
-    }
+  return {
+    id: user._id,
+    fullName: user.fullName,
+    email: user.email,
+    role: user.role,
+    wallet: user.wallet, // 👈 return to client
+    token,
+  };
+}
 
-    async login(data: LoginDTO) {
-        const { email, password } = data;
+  async login(data: LoginDTO) {
+  const { email, password } = data;
 
-        const user = await this.userRepository.findByEmail(email);
+  const user = await this.userRepository.findByEmail(email);
 
-        if (!user) {
-            throw new NotFoundError("User not found");
-        }
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await bcrypt.compare(password, user.password);
 
-        if (!isMatch) {
-            throw new UnauthorizedError("Invalid credentials");
-        }
+  if (!isMatch) {
+    throw new UnauthorizedError("Invalid credentials");
+  }
 
-        const token = generateToken({
-            userId: user._id,
-            email: user.email,
-            role: user.role,
-        });
+  const token = generateToken({
+    userId: user._id,
+    email: user.email,
+    role: user.role,
+    wallet: user.wallet, // 👈 add
+  });
 
-        return {
-            id: user._id,
-            fullName: user.fullName,
-            email: user.email,
-            role: user.role,
-            token,
-        };
-    }
+  return {
+    id: user._id,
+    fullName: user.fullName,
+    email: user.email,
+    role: user.role,
+    wallet: user.wallet, // 👈 add
+    token,
+  };
+}
 
     async getUserById(id: string) {
         const user = await this.userRepository.findById(id);

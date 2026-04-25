@@ -1,7 +1,17 @@
 import mongoose from "mongoose";
 
-const SensorHistorySchema = new mongoose.Schema({
-    nodeId: String,
+const SensorHistorySchema = new mongoose.Schema(
+  {
+    nodeId: {
+      type: String,
+      required: true,
+      index: true, // 🔥 fast queries
+    },
+
+    ownerEmail: {
+      type: String,
+      index: true,
+    },
 
     temperature: Number,
     humidity: Number,
@@ -10,11 +20,25 @@ const SensorHistorySchema = new mongoose.Schema({
     pm10: Number,
 
     aqi: Number,
+    aqiLevel: String,
+
+    location: {
+      lat: Number,
+      lng: Number,
+    },
 
     timestamp: {
-        type: Date,
-        default: Date.now
-    }
-});
+      type: Date,
+      default: Date.now,
+      index: true, // critical for time queries
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-export const SensorHistory = mongoose.model("SensorHistory", SensorHistorySchema);
+export const SensorHistory = mongoose.model(
+  "SensorHistory",
+  SensorHistorySchema
+);
