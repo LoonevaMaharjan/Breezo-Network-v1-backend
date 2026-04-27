@@ -2,8 +2,8 @@ import nacl from "tweetnacl";
 import bs58 from "bs58";
 
 // CONFIGURATION
-const NODE_ID = "NODE_001";
-const PRIVATE_KEY_B58 = "29SkFS1ZoGJ448Lm329zZX1xJQR9JZbbyqf61waoh58qfkiNgE34KaVhFnqJXsEQaHQVkyyZtF9qyJ7mVEU89AWR";
+const NODE_ID = "NODE_100";
+const PRIVATE_KEY_B58 = "3oDgCR7KZEn2ywD6ECkq1xFGATm28okhTkR4VRhXexth7utXkyuDpxSNmyYQhjZDnXz5Sj31uJrMtobbxZrcxAj2";
 
 
 

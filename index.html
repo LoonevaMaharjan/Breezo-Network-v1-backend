@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Breezo Network — Developer Docs</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0A0C10;
+  --bg2:      #0F1218;
+  --bg3:      #151A22;
+  --border:   #1E2530;
+  --border2:  #2A3340;
+  --text:     #E8EDF5;
+  --muted:    #6B7A8D;
+  --dim:      #3A4553;
+  --green:    #1BCC7A;
+  --green-bg: rgba(27,204,122,.08);
+  --blue:     #3B9EFF;
+  --blue-bg:  rgba(59,158,255,.08);
+  --amber:    #F5A623;
+  --amber-bg: rgba(245,166,35,.08);
+  --purple:   #A78BFA;
+  --purple-bg:rgba(167,139,250,.08);
+  --red:      #F87171;
+  --red-bg:   rgba(248,113,113,.08);
+  --radius:   10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ─── SIDEBAR ─────────────────────────────────── */
+.sidebar {
+  width: 240px;
+  min-width: 240px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-logo {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.sidebar-logo .name {
+  font-family: 'Syne', sans-serif;
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -.3px;
+}
+
+.sidebar-logo .tagline {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.nav-group {
+  padding: 0 12px;
+  margin-bottom: 4px;
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 8px 8px 4px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .15s;
+}
+
+.nav-item:hover { background: var(--bg3); color: var(--text); }
+.nav-item.active { background: var(--green-bg); color: var(--green); }
+
+.nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+}
+.nav-item.active .nav-dot { background: var(--green); }
+
+.method-pill {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.pill-post { background: rgba(27,204,122,.15); color: var(--green); }
+.pill-get  { background: rgba(59,158,255,.15);  color: var(--blue);  }
+
+/* ─── MAIN ────────────────────────────────────── */
+.main {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 860px;
+  padding: 48px 48px 80px;
+}
+
+/* ─── HERO ────────────────────────────────────── */
+.hero {
+  margin-bottom: 56px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--green-bg);
+  border: 1px solid rgba(27,204,122,.2);
+  color: var(--green);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+.hero h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+
+.hero h1 span { color: var(--green); }
+
+.hero p {
+  font-size: 16px;
+  color: var(--muted);
+  max-width: 560px;
+  line-height: 1.8;
+  font-weight: 300;
+}
+
+/* ─── FLOW DIAGRAM ───────────────────────────── */
+.flow-diagram {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 32px 0 48px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.flow-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.flow-icon {
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+}
+
+.flow-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.flow-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: var(--dim);
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: -16px;
+}
+
+.flow-arrow-label {
+  font-size: 9px;
+  color: var(--dim);
+  font-family: 'IBM Plex Mono', monospace;
+  text-align: center;
+  margin-top: -12px;
+}
+
+/* ─── SECTION HEADERS ────────────────────────── */
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+  letter-spacing: -.5px;
+}
+
+.section-sub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 24px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 48px 0;
+}
+
+/* ─── ENDPOINT CARDS ─────────────────────────── */
+.endpoint {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+
+.endpoint:hover { border-color: var(--border2); }
+
+.endpoint-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg2);
+  transition: background .15s;
+}
+
+.endpoint-header:hover { background: var(--bg3); }
+
+.method-badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 9px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.badge-post { background: var(--green-bg); color: var(--green); border: 1px solid rgba(27,204,122,.2); }
+.badge-get  { background: var(--blue-bg);  color: var(--blue);  border: 1px solid rgba(59,158,255,.2); }
+
+.endpoint-path {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.endpoint-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-left: auto;
+  padding-left: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.chevron {
+  margin-left: auto;
+  color: var(--dim);
+  font-size: 11px;
+  transition: transform .2s;
+  flex-shrink: 0;
+}
+
+.endpoint.open .chevron { transform: rotate(180deg); }
+.endpoint.open .endpoint-header { border-bottom: 1px solid var(--border); }
+
+.endpoint-body {
+  display: none;
+  padding: 20px;
+}
+
+.endpoint.open .endpoint-body { display: block; }
+
+/* ─── INSIDE ENDPOINT ────────────────────────── */
+.ep-description {
+  font-size: 13px;
+  color: #8A96A8;
+  margin-bottom: 20px;
+  line-height: 1.8;
+  padding: 12px 16px;
+  background: var(--bg3);
+  border-radius: 6px;
+  border-left: 3px solid var(--border2);
+}
+
+.steps-list {
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.step-n {
+  min-width: 22px;
+  height: 22px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.code-label {
+  font-size: 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+  letter-spacing: .8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  margin-top: 16px;
+}
+
+pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #A8B4C2;
+  position: relative;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.copy-btn:hover { background: var(--border2); color: var(--text); }
+
+.pre-wrap { position: relative; }
+
+.k { color: #F87171; }   /* key names */
+.s { color: #86EFAC; }   /* string values */
+.n { color: #93C5FD; }   /* numbers */
+.c { color: #6B7A8D; }   /* comments */
+.p { color: #D1D5DB; }   /* punctuation */
+
+.tags-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.tag {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  color: var(--dim);
+  background: var(--bg3);
+}
+
+.tag-green { border-color: rgba(27,204,122,.2); color: var(--green); background: var(--green-bg); }
+.tag-blue  { border-color: rgba(59,158,255,.2);  color: var(--blue);  background: var(--blue-bg); }
+.tag-amber { border-color: rgba(245,166,35,.2);  color: var(--amber); background: var(--amber-bg); }
+.tag-red   { border-color: rgba(248,113,113,.2); color: var(--red);   background: var(--red-bg); }
+
+/* ─── REWARD TABLE ───────────────────────────── */
+.reward-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.reward-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.reward-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+}
+
+.reward-table tr:last-child td { border-bottom: none; }
+.reward-table tr:hover td { background: var(--bg3); }
+
+.reward-val { color: var(--green); font-weight: 600; }
+.pm-range   { color: var(--blue); }
+
+/* ─── INSTRUCTION TABLE ─────────────────────── */
+.instr-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.instr-table th {
+  text-align: left;
+  padding: 8px 12px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  color: var(--dim);
+  border-bottom: 1px solid var(--border);
+}
+
+.instr-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.instr-table tr:last-child td { border-bottom: none; }
+
+.instr-name {
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+/* ─── WALKTHROUGH ─────────────────────────────── */
+.walk-step {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 28px;
+  position: relative;
+}
+
+.walk-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: 40px;
+  bottom: -12px;
+  width: 1px;
+  background: var(--border);
+}
+
+.walk-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.walk-content { flex: 1; padding-top: 4px; }
+
+.walk-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.walk-note {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+/* ─── RUST BLOCK ─────────────────────────────── */
+.rust-keyword { color: #F87171; }
+.rust-fn      { color: #7DD3FC; }
+.rust-type    { color: #86EFAC; }
+.rust-string  { color: #FCA5A5; }
+.rust-comment { color: #4B5563; font-style: italic; }
+.rust-attr    { color: #C084FC; }
+.rust-num     { color: #93C5FD; }
+
+/* ─── SCROLLBAR ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+
+/* ─── ANIM ───────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.endpoint { animation: fadeUp .3s ease both; }
+.endpoint:nth-child(1) { animation-delay: .05s; }
+.endpoint:nth-child(2) { animation-delay: .10s; }
+.endpoint:nth-child(3) { animation-delay: .15s; }
+.endpoint:nth-child(4) { animation-delay: .20s; }
+.endpoint:nth-child(5) { animation-delay: .25s; }
+.endpoint:nth-child(6) { animation-delay: .30s; }
+.endpoint:nth-child(7) { animation-delay: .35s; }
+.endpoint:nth-child(8) { animation-delay: .40s; }
+
+.info-box {
+  background: var(--amber-bg);
+  border: 1px solid rgba(245,166,35,.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 12px;
+  color: #D4A050;
+  margin: 12px 0;
+  display: flex;
+  gap: 8px;
+}
+
+.info-box-icon { flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="name">Breezo Network</div>
+    <div class="tagline">DePIN · Air Quality · Solana</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <a href="#overview" class="nav-item active"><span class="nav-dot"></span>Introduction</a>
+    <a href="#architecture" class="nav-item"><span class="nav-dot"></span>Architecture</a>
+    <a href="#reward" class="nav-item"><span class="nav-dot"></span>Reward Engine</a>
+    <a href="#solana" class="nav-item"><span class="nav-dot"></span>Solana Program</a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Auth</div>
+    <a href="#signup" class="nav-item"><span class="nav-dot"></span>Signup<span class="method-pill pill-post">POST</span></a>
+    <a href="#login" class="nav-item"><span class="nav-dot"></span>Login<span class="method-pill pill-post">POST</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Node</div>
+    <a href="#create" class="nav-item"><span class="nav-dot"></span>Create<span class="method-pill pill-post">POST</span></a>
+    <a href="#link-request" class="nav-item"><span class="nav-dot"></span>Link Request<span class="method-pill pill-post">POST</span></a>
+    <a href="#link-verify" class="nav-item"><span class="nav-dot"></span>Link Verify<span class="method-pill pill-post">POST</span></a>
+    <a href="#ingest" class="nav-item"><span class="nav-dot"></span>Ingest<span class="method-pill pill-post">POST</span></a>
+    <a href="#dashboard" class="nav-item"><span class="nav-dot"></span>Dashboard<span class="method-pill pill-get">GET</span></a>
+    <a href="#claim" class="nav-item"><span class="nav-dot"></span>Claim Reward<span class="method-pill pill-post">POST</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Walkthrough</div>
+    <a href="#walkthrough" class="nav-item"><span class="nav-dot"></span>Step-by-step test</a>
+    <a href="#scripts" class="nav-item"><span class="nav-dot"></span>Sign scripts</a>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══════════════════════════════════════ -->
+<main class="main">
+
+  <!-- HERO -->
+  <section id="overview" class="hero">
+    <div class="hero-badge">⬡ DePIN Protocol v1.0</div>
+    <h1>Breezo <span>Network</span><br>Developer Docs</h1>
+    <p>A decentralized physical infrastructure network where ESP32 devices collect air quality data, sign it with Ed25519 keys, and earn on-chain Solana rewards proportional to the quality of air they report.</p>
+
+    <div class="flow-diagram" style="margin-top:32px">
+      <div class="flow-node">
+        <div class="flow-icon">🔌</div>
+        <div class="flow-label">ESP32<br>Device</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;margin-top:-16px">
+        <div class="flow-arrow">→</div>
+        <div class="flow-arrow-label">signed payload</div>
+      </div>
+      <div class="flow-node">
+        <div class="flow-icon">⚙️</div>
+        <div class="flow-label">Backend<br>API</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;margin-top:-16px">
+        <div class="flow-arrow">→</div>
+        <div class="flow-arrow-label">verify + store</div>
+      </div>
+      <div class="flow-node">
+        <div class="flow-icon">🗄️</div>
+        <div class="flow-label">MongoDB<br>State</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;margin-top:-16px">
+        <div class="flow-arrow">→</div>
+        <div class="flow-arrow-label">reward ≥ 10</div>
+      </div>
+      <div class="flow-node">
+        <div class="flow-icon">⛓️</div>
+        <div class="flow-label">Solana<br>devnet</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;margin-top:-16px">
+        <div class="flow-arrow">→</div>
+        <div class="flow-arrow-label">claimReward</div>
+      </div>
+      <div class="flow-node">
+        <div class="flow-icon">👛</div>
+        <div class="flow-label">Owner<br>Wallet</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE -->
+  <section id="architecture">
+    <div class="section-title">Architecture</div>
+    <div class="section-sub">Three-layer system: hardware → backend → blockchain</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <div style="font-size:20px;margin-bottom:8px">🔌</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">ESP32 Firmware</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">DHT22 · SDS011 · MQ135<br>Ed25519 signing<br>NTP timestamps<br>ArduinoJson payloads</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <div style="font-size:20px;margin-bottom:8px">⚙️</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Node.js Backend</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">Express + TypeScript<br>JWT auth · bcrypt<br>NaCl sig verification<br>Anchor SDK client</div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px">
+        <div style="font-size:20px;margin-bottom:8px">⛓️</div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Solana Program</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.7">Rust + Anchor<br>NodeAccount on-chain<br>initNode · addReward<br>claimReward</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- REWARD ENGINE -->
+  <section id="reward">
+    <div class="section-title">Reward Engine</div>
+    <div class="section-sub">Tokens accumulate per reading based on PM2.5 levels. Auto-syncs to Solana at 10 tokens.</div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+      <table class="reward-table">
+        <thead>
+          <tr>
+            <th>PM2.5 Range (µg/m³)</th>
+            <th>Air Quality</th>
+            <th>Reward / Reading</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="pm-range">pm25 &lt; 50</td>
+            <td><span class="tag tag-green">GOOD / MODERATE</span></td>
+            <td class="reward-val">+0.02</td>
+            <td style="color:var(--muted)">Clean air bonus</td>
+          </tr>
+          <tr>
+            <td class="pm-range">50 ≤ pm25 &lt; 100</td>
+            <td><span class="tag tag-amber">UNHEALTHY SENSITIVE</span></td>
+            <td class="reward-val">+0.01</td>
+            <td style="color:var(--muted)">Moderate reading</td>
+          </tr>
+          <tr>
+            <td class="pm-range">100 ≤ pm25 ≤ 300</td>
+            <td><span class="tag tag-red">VERY UNHEALTHY</span></td>
+            <td class="reward-val">+0.005</td>
+            <td style="color:var(--muted)">Polluted but reporting</td>
+          </tr>
+          <tr>
+            <td class="pm-range">pm25 &gt; 300</td>
+            <td><span class="tag">HAZARDOUS</span></td>
+            <td style="color:var(--dim);font-family:'IBM Plex Mono',monospace">0</td>
+            <td style="color:var(--muted)">Sensor fault suspected</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:12px;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--muted)">
+      When <code style="color:var(--green);background:var(--bg3);padding:1px 5px;border-radius:3px">reward ≥ 10</code> and <code style="color:var(--green);background:var(--bg3);padding:1px 5px;border-radius:3px">syncing === false</code> → backend fires <strong style="color:var(--text)">syncToSolanaAsync()</strong> (fire-and-forget) → calls <code style="color:var(--amber);background:var(--bg3);padding:1px 5px;border-radius:3px">addReward</code> on-chain → resets local counter to 0. The <code style="color:var(--blue);background:var(--bg3);padding:1px 5px;border-radius:3px">syncing</code> flag prevents concurrent sync attempts.
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SOLANA PROGRAM -->
+  <section id="solana">
+    <div class="section-title">Solana Program</div>
+    <div class="section-sub">Program ID: <code style="color:var(--amber);font-family:'IBM Plex Mono',monospace;font-size:12px">5ygRCA7pF2h7GeGxP9RaiNQNTNb5J5GnB9XSzxh75gVw</code></div>
+
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px">
+      <table class="instr-table">
+        <thead>
+          <tr>
+            <th>Instruction</th>
+            <th>Signer</th>
+            <th>What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="instr-name">initNode</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue)">authority (backend)<br>nodeAccount (new keypair)</td>
+            <td>Creates NodeAccount on-chain. Backend pays rent. Owner stored but does NOT sign.</td>
+          </tr>
+          <tr>
+            <td><span class="instr-name">addReward</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue)">authority (backend)</td>
+            <td>Increments reward_balance (lamports). Checks caller === stored authority.</td>
+          </tr>
+          <tr>
+            <td><span class="instr-name">claimReward</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--amber)">owner (user wallet)</td>
+            <td>Transfers lamports from NodeAccount → owner. Requires user signature — must be called from frontend.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="code-label">NodeAccount struct</div>
+    <div class="pre-wrap">
+      <pre><span class="rust-attr">#[account]</span>
+<span class="rust-keyword">pub struct</span> <span class="rust-type">NodeAccount</span> {
+    <span class="rust-keyword">pub</span> owner:             <span class="rust-type">Pubkey</span>,  <span class="rust-comment">// user wallet — stored, not required to sign</span>
+    <span class="rust-keyword">pub</span> authority:         <span class="rust-type">Pubkey</span>,  <span class="rust-comment">// backend wallet — signs addReward</span>
+    <span class="rust-keyword">pub</span> device_public_key: <span class="rust-type">Pubkey</span>,  <span class="rust-comment">// ESP32 Ed25519 public key</span>
+    <span class="rust-keyword">pub</span> reward_balance:    <span class="rust-type">u64</span>,     <span class="rust-comment">// lamports accumulated</span>
+}
+<span class="rust-comment">// space = 8 (discriminator) + 32 + 32 + 32 + 8 = 112 bytes</span></pre>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ══ API REFERENCE ══════════════════════════ -->
+  <div class="section-title" id="auth">API Reference</div>
+  <div class="section-sub" style="margin-bottom:24px">All authenticated routes require <code style="color:var(--green);background:var(--bg3);padding:1px 6px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11px">Authorization: Bearer &lt;token&gt;</code></div>
+
+  <!-- SIGNUP -->
+  <div class="endpoint open" id="signup">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/auth/signup</span>
+      <span class="endpoint-desc">Register new user</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Creates a new user account with a Solana wallet address. Returns a JWT immediately — no separate login needed. The wallet address is embedded in every token and flows through to all authenticated requests.</div>
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Check email uniqueness — throw <code>ConflictError</code> if taken</div></div>
+        <div class="step"><div class="step-n">2</div><div>Hash password with <code>bcrypt</code> (10 rounds)</div></div>
+        <div class="step"><div class="step-n">3</div><div>Save User to MongoDB including <code>wallet</code> field</div></div>
+        <div class="step"><div class="step-n">4</div><div>Sign JWT with <code>{ userId, email, role, wallet }</code> — 1 year expiry</div></div>
+        <div class="step"><div class="step-n">5</div><div>Return user object + token</div></div>
+      </div>
+      <div class="code-label">Request body</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"fullName"</span><span class="p">:</span> <span class="s">"Aether Node Owner"</span><span class="p">,</span>
+  <span class="k">"email"</span><span class="p">:</span>    <span class="s">"owner@breezo.io"</span><span class="p">,</span>
+  <span class="k">"password"</span><span class="p">:</span> <span class="s">"SecurePass123!"</span><span class="p">,</span>
+  <span class="k">"wallet"</span><span class="p">:</span>   <span class="s">"44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"</span>
+<span class="p">}</span></pre></div>
+      <div class="code-label">Response</div>
+      <div class="pre-wrap"><pre><span class="p">{</span>
+  <span class="k">"success"</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+  <span class="k">"data"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"id"</span><span class="p">:</span>       <span class="s">"68ebdbd2bd05c0bcfaa9cc19"</span><span class="p">,</span>
+    <span class="k">"fullName"</span><span class="p">:</span> <span class="s">"Aether Node Owner"</span><span class="p">,</span>
+    <span class="k">"email"</span><span class="p">:</span>    <span class="s">"owner@breezo.io"</span><span class="p">,</span>
+    <span class="k">"wallet"</span><span class="p">:</span>   <span class="s">"44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"</span><span class="p">,</span>
+    <span class="k">"token"</span><span class="p">:</span>    <span class="s">"eyJhbGciOiJIUzI1NiJ9..."</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag">No auth required</span>
+        <span class="tag tag-green">Returns JWT</span>
+        <span class="tag">Stores wallet in DB</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div class="endpoint" id="login">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/auth/login</span>
+      <span class="endpoint-desc">Get fresh JWT</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Authenticates an existing user. Always re-login after schema changes to get a fresh token that includes all current fields. Old tokens missing <code>wallet</code> will cause <code>req.user.wallet = undefined</code> downstream.</div>
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Find user by email — <code>NotFoundError</code> if missing</div></div>
+        <div class="step"><div class="step-n">2</div><div><code>bcrypt.compare</code> password against stored hash</div></div>
+        <div class="step"><div class="step-n">3</div><div>Sign JWT including <code>wallet: user.wallet</code></div></div>
+      </div>
+      <div class="code-label">Request body</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"email"</span><span class="p">:</span>    <span class="s">"owner@breezo.io"</span><span class="p">,</span>
+  <span class="k">"password"</span><span class="p">:</span> <span class="s">"SecurePass123!"</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag">No auth required</span>
+        <span class="tag tag-amber">Save this token</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE NODE -->
+  <div class="endpoint" id="create">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/node/create</span>
+      <span class="endpoint-desc">Register device off-chain</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Registers the ESP32 device in MongoDB. Setup step only — does not touch Solana. The <code>devicePublicKey</code> must be the real Ed25519 public key generated on the device. After this the device exists in the system but cannot send data yet (<code>isLinked: false</code>).</div>
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Check <code>nodeId</code> not already registered</div></div>
+        <div class="step"><div class="step-n">2</div><div>Create <code>Node</code> document in MongoDB — <code>isLinked: false</code>, <code>nodeAccount: null</code></div></div>
+        <div class="step"><div class="step-n">3</div><div>Create <code>NodeLatest</code> placeholder with all sensors at 0</div></div>
+      </div>
+      <div class="code-label">Request body</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"nodeId"</span><span class="p">:</span>          <span class="s">"NODE_001"</span><span class="p">,</span>
+  <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz"</span><span class="p">,</span>
+  <span class="k">"ownerEmail"</span><span class="p">:</span>      <span class="s">"owner@breezo.io"</span><span class="p">,</span>
+  <span class="k">"ownerWallet"</span><span class="p">:</span>     <span class="s">"44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag tag-blue">Requires JWT</span>
+        <span class="tag">MongoDB only</span>
+        <span class="tag">No Solana yet</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINK REQUEST -->
+  <div class="endpoint" id="link-request">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/node/link/request</span>
+      <span class="endpoint-desc">Get signing challenge</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Step 1 of device linking. Server generates a random 32-byte hex challenge and stores it. The caller must sign it with the device's Ed25519 private key and return the signature in <code>link/verify</code>. This proves physical possession of the device.</div>
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Find device by <code>devicePublicKey</code></div></div>
+        <div class="step"><div class="step-n">2</div><div>Generate <code>crypto.randomBytes(32).toString('hex')</code></div></div>
+        <div class="step"><div class="step-n">3</div><div>Save to <code>Node.linkChallenge</code> in MongoDB</div></div>
+        <div class="step"><div class="step-n">4</div><div>Return <code>{ devicePublicKey, challenge }</code></div></div>
+      </div>
+      <div class="code-label">Request body</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz"</span>
+<span class="p">}</span></pre></div>
+      <div class="code-label">Response — save the challenge</div>
+      <div class="pre-wrap"><pre><span class="p">{</span>
+  <span class="k">"success"</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+  <span class="k">"data"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz"</span><span class="p">,</span>
+    <span class="k">"challenge"</span><span class="p">:</span>       <span class="s">"a3f9c12e847b3d1f...64-char hex...91f0"</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag tag-blue">Requires JWT</span>
+        <span class="tag tag-amber">Save the challenge</span>
+        <span class="tag">Sign it with device key</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINK VERIFY -->
+  <div class="endpoint" id="link-verify">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/node/link/verify</span>
+      <span class="endpoint-desc">Verify + create on-chain account</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Step 2 of device linking. Verifies the Ed25519 signature of the challenge. If valid, calls <code>initNode</code> on Solana to create a <code>NodeAccount</code> — backend wallet pays rent, user wallet stored as owner (does not sign). Marks node as linked in MongoDB.</div>
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Fetch node, verify <code>linkChallenge</code> exists</div></div>
+        <div class="step"><div class="step-n">2</div><div><code>nacl.sign.detached.verify(challenge, signature, devicePublicKey)</code></div></div>
+        <div class="step"><div class="step-n">3</div><div>Generate fresh <code>Keypair</code> for the on-chain NodeAccount</div></div>
+        <div class="step"><div class="step-n">4</div><div>Call <code>program.methods.initNode()</code> — accounts: nodeAccount, owner, authority (backend, signer+payer), devicePublicKey, systemProgram</div></div>
+        <div class="step"><div class="step-n">5</div><div>Save <code>nodeAccount</code> address to MongoDB, set <code>isLinked: true</code></div></div>
+      </div>
+      <div class="code-label">Request body</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNksHQ1dFspgWVxkS5japDtT8nvSySFJhNQz27GDz"</span><span class="p">,</span>
+  <span class="k">"signature"</span><span class="p">:</span>       <span class="s">"3Vge8JU8Ux...base58 Ed25519 sig of challenge...fAf4"</span>
+<span class="p">}</span></pre></div>
+      <div class="code-label">Response</div>
+      <div class="pre-wrap"><pre><span class="p">{</span>
+  <span class="k">"success"</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+  <span class="k">"data"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"nodeId"</span><span class="p">:</span>      <span class="s">"NODE_001"</span><span class="p">,</span>
+    <span class="k">"isLinked"</span><span class="p">:</span>    <span class="n">true</span><span class="p">,</span>
+    <span class="k">"nodeAccount"</span><span class="p">:</span> <span class="s">"J9WpHHwftv7JFGcZjiDH4vXePcGV7ddL3K9YiMycww22"</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag tag-blue">Requires JWT</span>
+        <span class="tag tag-green">Hits Solana devnet</span>
+        <span class="tag">wallet from JWT payload</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- INGEST -->
+  <div class="endpoint" id="ingest">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/node/ingest</span>
+      <span class="endpoint-desc">Submit sensor reading (ESP32)</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Hot path — called by ESP32 every 15 seconds. No JWT required but the payload must be Ed25519-signed with the device's private key. Timestamp must be within 60 seconds (replay protection). Reward accumulates per reading and auto-syncs to Solana at 10 tokens.</div>
+
+      <div class="info-box">
+        <span class="info-box-icon">⚠️</span>
+        <span>The <code>signature</code> must be the Ed25519 signature of the exact string <code>JSON.stringify({ payload, timestamp })</code> — key order matters. The backend reconstructs this exact string to verify.</span>
+      </div>
+
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Find node by <code>nodeId</code> — reject if <code>isLinked: false</code></div></div>
+        <div class="step"><div class="step-n">2</div><div>Replay protection: <code>Date.now() - timestamp &gt; 60_000</code> → reject</div></div>
+        <div class="step"><div class="step-n">3</div><div>Reconstruct <code>message = JSON.stringify({ payload, timestamp })</code></div></div>
+        <div class="step"><div class="step-n">4</div><div><code>nacl.sign.detached.verify(message, signature, devicePublicKey)</code></div></div>
+        <div class="step"><div class="step-n">5</div><div><code>calculateReward(pm25)</code> → upsert <code>NodeLatest</code>, accumulate reward</div></div>
+        <div class="step"><div class="step-n">6</div><div>Async: write to <code>SensorHistory</code> collection for historical data</div></div>
+        <div class="step"><div class="step-n">7</div><div>If <code>reward ≥ 10</code> and <code>!syncing</code> → <code>markSyncing()</code> → fire <code>syncToSolanaAsync()</code></div></div>
+      </div>
+      <div class="code-label">Request body (no auth header needed)</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"nodeId"</span><span class="p">:</span>    <span class="s">"NODE_001"</span><span class="p">,</span>
+  <span class="k">"timestamp"</span><span class="p">:</span> <span class="n">1745123456789</span><span class="p">,</span>       <span class="c">// Date.now() on device</span>
+  <span class="k">"signature"</span><span class="p">:</span> <span class="s">"4Tz9...base58 sig...Xm1"</span><span class="p">,</span>
+  <span class="k">"payload"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"temperature"</span><span class="p">:</span> <span class="n">28.5</span><span class="p">,</span>
+    <span class="k">"humidity"</span><span class="p">:</span>    <span class="n">62.3</span><span class="p">,</span>
+    <span class="k">"pm25"</span><span class="p">:</span>        <span class="n">42.0</span><span class="p">,</span>
+    <span class="k">"pm10"</span><span class="p">:</span>        <span class="n">67.8</span><span class="p">,</span>
+    <span class="k">"aqi"</span><span class="p">:</span>         <span class="n">112</span><span class="p">,</span>
+    <span class="k">"aqiLevel"</span><span class="p">:</span>    <span class="s">"MODERATE"</span><span class="p">,</span>
+    <span class="k">"location"</span><span class="p">:</span>    <span class="p">{</span> <span class="k">"lat"</span><span class="p">:</span> <span class="n">28.6139</span><span class="p">,</span> <span class="k">"lng"</span><span class="p">:</span> <span class="n">77.2090</span> <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag">No JWT — device route</span>
+        <span class="tag tag-green">Ed25519 verified</span>
+        <span class="tag tag-red">Replay protected (60s)</span>
+        <span class="tag tag-amber">Auto Solana sync</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="endpoint" id="dashboard">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-get">GET</span>
+      <span class="endpoint-path">/node/dashboard</span>
+      <span class="endpoint-desc">Live state for all user nodes</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Returns all <code>NodeLatest</code> records for the authenticated user. This is the data source for a frontend dashboard — live sensor readings, AQI status, accumulated reward balance, and last seen timestamp for every node owned by the user.</div>
+      <div class="code-label">Internal flow</div>
+      <div class="steps-list">
+        <div class="step"><div class="step-n">1</div><div>Extract <code>email</code> from JWT (<code>req.user.email</code>)</div></div>
+        <div class="step"><div class="step-n">2</div><div>Query <code>NodeLatest</code> where <code>ownerEmail</code> matches</div></div>
+        <div class="step"><div class="step-n">3</div><div>Return array of live node states</div></div>
+      </div>
+      <div class="code-label">Response</div>
+      <div class="pre-wrap"><pre><span class="p">{</span>
+  <span class="k">"success"</span><span class="p">:</span> <span class="n">true</span><span class="p">,</span>
+  <span class="k">"data"</span><span class="p">:</span> <span class="p">[{</span>
+    <span class="k">"nodeId"</span><span class="p">:</span>      <span class="s">"NODE_001"</span><span class="p">,</span>
+    <span class="k">"temperature"</span><span class="p">:</span> <span class="n">28.5</span><span class="p">,</span>
+    <span class="k">"humidity"</span><span class="p">:</span>    <span class="n">62.3</span><span class="p">,</span>
+    <span class="k">"pm25"</span><span class="p">:</span>        <span class="n">42.0</span><span class="p">,</span>
+    <span class="k">"pm10"</span><span class="p">:</span>        <span class="n">67.8</span><span class="p">,</span>
+    <span class="k">"aqi"</span><span class="p">:</span>         <span class="n">112</span><span class="p">,</span>
+    <span class="k">"aqiLevel"</span><span class="p">:</span>    <span class="s">"MODERATE"</span><span class="p">,</span>
+    <span class="k">"reward"</span><span class="p">:</span>      <span class="n">3.14</span><span class="p">,</span>
+    <span class="k">"syncing"</span><span class="p">:</span>     <span class="n">false</span><span class="p">,</span>
+    <span class="k">"location"</span><span class="p">:</span>    <span class="p">{</span> <span class="k">"lat"</span><span class="p">:</span> <span class="n">28.6139</span><span class="p">,</span> <span class="k">"lng"</span><span class="p">:</span> <span class="n">77.2090</span> <span class="p">},</span>
+    <span class="k">"lastSeen"</span><span class="p">:</span>    <span class="s">"2026-04-25T10:30:00.000Z"</span>
+  <span class="p">}]</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag tag-blue">Requires JWT</span>
+        <span class="tag">MongoDB query only</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLAIM REWARD -->
+  <div class="endpoint" id="claim">
+    <div class="endpoint-header" onclick="toggle(this)">
+      <span class="method-badge badge-post">POST</span>
+      <span class="endpoint-path">/node/reward/claim</span>
+      <span class="endpoint-desc">Claim on-chain reward</span>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="endpoint-body">
+      <div class="ep-description">Returns the data needed to construct a <code>claimReward</code> transaction. Because <code>claimReward</code> requires the owner to sign and the owner's private key lives in the user's wallet (Phantom etc.), the backend returns the necessary accounts — the frontend must construct and send the transaction.</div>
+      <div class="info-box">
+        <span class="info-box-icon">⚠️</span>
+        <span>The Rust <code>ClaimReward</code> struct has <code>owner: Signer</code> — meaning the user's wallet must sign. The backend cannot sign on behalf of a user. In production, this endpoint returns unsigned transaction data for the frontend to sign via Phantom/Backpack.</span>
+      </div>
+      <div class="code-label">Request body</div>
+      <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="p">{</span>
+  <span class="k">"nodeId"</span><span class="p">:</span> <span class="s">"NODE_001"</span>
+<span class="p">}</span></pre></div>
+      <div class="code-label">Response (data for frontend to sign)</div>
+      <div class="pre-wrap"><pre><span class="p">{</span>
+  <span class="k">"success"</span><span class="p">:</span>  <span class="n">true</span><span class="p">,</span>
+  <span class="k">"data"</span><span class="p">:</span> <span class="p">{</span>
+    <span class="k">"nodeAccount"</span><span class="p">:</span> <span class="s">"J9WpHHwftv7JFGcZjiDH4vXePcGV7ddL3K9YiMycww22"</span><span class="p">,</span>
+    <span class="k">"ownerWallet"</span><span class="p">:</span> <span class="s">"44dZCzJ3nevs1KEYFwDgzDXTbqCnPBkxaeTK5RaA47gy"</span><span class="p">,</span>
+    <span class="k">"programId"</span><span class="p">:</span>   <span class="s">"5ygRCA7pF2h7GeGxP9RaiNQNTNb5J5GnB9XSzxh75gVw"</span>
+  <span class="p">}</span>
+<span class="p">}</span></pre></div>
+      <div class="tags-row">
+        <span class="tag tag-blue">Requires JWT</span>
+        <span class="tag tag-amber">User must sign via frontend</span>
+        <span class="tag tag-green">Hits Solana devnet</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- WALKTHROUGH -->
+  <section id="walkthrough">
+    <div class="section-title">Complete Test Walkthrough</div>
+    <div class="section-sub">Follow these 10 steps in order to test the full flow from signup to reward claim.</div>
+
+    <div style="margin-top:28px">
+
+      <div class="walk-step">
+        <div class="walk-num">1</div>
+        <div class="walk-content">
+          <div class="walk-title">Sign up</div>
+          <div class="walk-note">Create account with your Solana wallet address. Save the token.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>POST /auth/signup
+<span class="p">{</span> <span class="k">"fullName"</span><span class="p">:</span> <span class="s">"Aether Node Owner"</span><span class="p">,</span> <span class="k">"email"</span><span class="p">:</span> <span class="s">"owner@breezo.io"</span><span class="p">,</span>
+  <span class="k">"password"</span><span class="p">:</span> <span class="s">"SecurePass123!"</span><span class="p">,</span> <span class="k">"wallet"</span><span class="p">:</span> <span class="s">"44dZCzJ3...Gy"</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">2</div>
+        <div class="walk-content">
+          <div class="walk-title">Login — get fresh JWT</div>
+          <div class="walk-note">Must login after adding wallet field. Old tokens won't have wallet in payload.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>POST /auth/login
+<span class="p">{</span> <span class="k">"email"</span><span class="p">:</span> <span class="s">"owner@breezo.io"</span><span class="p">,</span> <span class="k">"password"</span><span class="p">:</span> <span class="s">"SecurePass123!"</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">3</div>
+        <div class="walk-content">
+          <div class="walk-title">Register device in MongoDB</div>
+          <div class="walk-note">Use the real Ed25519 public key from the device or generated from your private key.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>POST /node/create  (Authorization: Bearer &lt;token&gt;)
+<span class="p">{</span> <span class="k">"nodeId"</span><span class="p">:</span> <span class="s">"NODE_001"</span><span class="p">,</span> <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNks...GDz"</span><span class="p">,</span>
+  <span class="k">"ownerEmail"</span><span class="p">:</span> <span class="s">"owner@breezo.io"</span><span class="p">,</span> <span class="k">"ownerWallet"</span><span class="p">:</span> <span class="s">"44dZCzJ3...Gy"</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">4</div>
+        <div class="walk-content">
+          <div class="walk-title">Request linking challenge</div>
+          <div class="walk-note">Save the <code>challenge</code> hex string — you'll sign it in the next step.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button">POST /node/link/request  (Authorization: Bearer &lt;token&gt;)
+<span class="p">{</span> <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNks...GDz"</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">5</div>
+        <div class="walk-content">
+          <div class="walk-title">Sign the challenge</div>
+          <div class="walk-note">Run the script locally with the challenge pasted in. Produces a base58 signature.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>npx ts-node scripts/sign-link-verify.ts
+<span class="c">// paste challenge hex into the script first</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">6</div>
+        <div class="walk-content">
+          <div class="walk-title">Verify link — creates Solana account</div>
+          <div class="walk-note">This calls <code>initNode</code> on Solana devnet. Response includes the on-chain <code>nodeAccount</code> address.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>POST /node/link/verify  (Authorization: Bearer &lt;token&gt;)
+<span class="p">{</span> <span class="k">"devicePublicKey"</span><span class="p">:</span> <span class="s">"4eHdNks...GDz"</span><span class="p">,</span>
+  <span class="k">"signature"</span><span class="p">:</span>       <span class="s">"&lt;base58 from sign-link-verify.ts&gt;"</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">7</div>
+        <div class="walk-content">
+          <div class="walk-title">Generate ingest signature</div>
+          <div class="walk-note">Run sign-ingest.ts. Copy both <code>timestamp</code> and <code>signature</code> — use them immediately (60s window).</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>npx ts-node scripts/sign-ingest.ts</pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">8</div>
+        <div class="walk-content">
+          <div class="walk-title">Submit sensor reading</div>
+          <div class="walk-note">No auth header. Uses the signature + timestamp from the previous step.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>POST /node/ingest
+<span class="p">{</span> <span class="k">"nodeId"</span><span class="p">:</span> <span class="s">"NODE_001"</span><span class="p">,</span> <span class="k">"timestamp"</span><span class="p">:</span> <span class="n">1745123456789</span><span class="p">,</span>
+  <span class="k">"signature"</span><span class="p">:</span> <span class="s">"&lt;from script&gt;"</span><span class="p">,</span>
+  <span class="k">"payload"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"temperature"</span><span class="p">:</span> <span class="n">28.5</span><span class="p">,</span> <span class="k">"humidity"</span><span class="p">:</span> <span class="n">62.3</span><span class="p">,</span> <span class="k">"pm25"</span><span class="p">:</span> <span class="n">42.0</span><span class="p">,</span>
+    <span class="k">"pm10"</span><span class="p">:</span> <span class="n">67.8</span><span class="p">,</span> <span class="k">"aqi"</span><span class="p">:</span> <span class="n">112</span><span class="p">,</span> <span class="k">"aqiLevel"</span><span class="p">:</span> <span class="s">"MODERATE"</span><span class="p">,</span>
+    <span class="k">"location"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"lat"</span><span class="p">:</span> <span class="n">28.6139</span><span class="p">,</span> <span class="k">"lng"</span><span class="p">:</span> <span class="n">77.2090</span> <span class="p">}</span> <span class="p">}</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">9</div>
+        <div class="walk-content">
+          <div class="walk-title">View dashboard</div>
+          <div class="walk-note">See live sensor state and accumulated reward for all your nodes.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>GET /node/dashboard  (Authorization: Bearer &lt;token&gt;)</pre></div>
+        </div>
+      </div>
+
+      <div class="walk-step">
+        <div class="walk-num">10</div>
+        <div class="walk-content">
+          <div class="walk-title">Claim reward</div>
+          <div class="walk-note">Backend returns accounts needed. Frontend uses these to build + sign the <code>claimReward</code> transaction via Phantom.</div>
+          <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button>POST /node/reward/claim  (Authorization: Bearer &lt;token&gt;)
+<span class="p">{</span> <span class="k">"nodeId"</span><span class="p">:</span> <span class="s">"NODE_001"</span> <span class="p">}</span></pre></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- SCRIPTS -->
+  <section id="scripts">
+    <div class="section-title">Signature Helper Scripts</div>
+    <div class="section-sub">Run locally to generate valid signatures for testing.</div>
+
+    <div class="code-label" style="margin-top:20px">scripts/sign-link-verify.ts</div>
+    <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="rust-keyword">import</span> nacl <span class="rust-keyword">from</span> <span class="s">"tweetnacl"</span><span class="p">;</span>
+<span class="rust-keyword">import</span> bs58  <span class="rust-keyword">from</span> <span class="s">"bs58"</span><span class="p">;</span>
+
+<span class="rust-keyword">const</span> DEVICE_PRIVATE_KEY <span class="p">=</span> <span class="s">"2GZkTAT6eK3Upt...your 64-byte base58 key...JMjNAY"</span><span class="p">;</span>
+<span class="rust-keyword">const</span> challenge          <span class="p">=</span> <span class="s">"PASTE_CHALLENGE_HEX_FROM_LINK_REQUEST_HERE"</span><span class="p">;</span>
+
+<span class="rust-keyword">const</span> keypair   <span class="p">=</span> nacl.sign.keyPair.fromSecretKey(bs58.decode(DEVICE_PRIVATE_KEY))<span class="p">;</span>
+<span class="rust-keyword">const</span> signature <span class="p">=</span> nacl.sign.detached(
+  <span class="rust-keyword">new</span> TextEncoder().encode(challenge), keypair.secretKey
+)<span class="p">;</span>
+
+console.log(<span class="s">"devicePublicKey:"</span>, bs58.encode(keypair.publicKey))<span class="p">;</span>
+console.log(<span class="s">"signature:      "</span>, bs58.encode(signature))<span class="p">;</span></pre></div>
+
+    <div class="code-label" style="margin-top:20px">scripts/sign-ingest.ts</div>
+    <div class="pre-wrap"><pre><button class="copy-btn" onclick="copy(this)">copy</button><span class="rust-keyword">import</span> nacl <span class="rust-keyword">from</span> <span class="s">"tweetnacl"</span><span class="p">;</span>
+<span class="rust-keyword">import</span> bs58  <span class="rust-keyword">from</span> <span class="s">"bs58"</span><span class="p">;</span>
+
+<span class="rust-keyword">const</span> DEVICE_PRIVATE_KEY <span class="p">=</span> <span class="s">"2GZkTAT6eK3Upt...your key...JMjNAY"</span><span class="p">;</span>
+<span class="rust-keyword">const</span> timestamp          <span class="p">=</span> Date.now()<span class="p">;</span>
+<span class="rust-keyword">const</span> payload <span class="p">= {</span>
+  temperature<span class="p">:</span> <span class="n">28.5</span><span class="p">,</span> humidity<span class="p">:</span> <span class="n">62.3</span><span class="p">,</span>
+  pm25<span class="p">:</span> <span class="n">42.0</span><span class="p">,</span>        pm10<span class="p">:</span> <span class="n">67.8</span><span class="p">,</span>
+  aqi<span class="p">:</span> <span class="n">112</span><span class="p">,</span>           aqiLevel<span class="p">:</span> <span class="s">"MODERATE"</span><span class="p">,</span>
+  location<span class="p">: {</span> lat<span class="p">:</span> <span class="n">28.6139</span><span class="p">,</span> lng<span class="p">:</span> <span class="n">77.2090</span> <span class="p">}</span>
+<span class="p">};</span>
+
+<span class="rust-keyword">const</span> message   <span class="p">=</span> JSON.stringify(<span class="p">{</span> payload<span class="p">,</span> timestamp <span class="p">});</span>
+<span class="rust-keyword">const</span> keypair   <span class="p">=</span> nacl.sign.keyPair.fromSecretKey(bs58.decode(DEVICE_PRIVATE_KEY))<span class="p">;</span>
+<span class="rust-keyword">const</span> signature <span class="p">=</span> nacl.sign.detached(<span class="rust-keyword">new</span> TextEncoder().encode(message), keypair.secretKey)<span class="p">;</span>
+
+console.log(<span class="s">"timestamp:"</span>, timestamp)<span class="p">;</span>
+console.log(<span class="s">"signature:"</span>, bs58.encode(signature))<span class="p">;</span></pre></div>
+  </section>
+
+</main>
+
+<script>
+function toggle(header) {
+  const card = header.closest('.endpoint');
+  card.classList.toggle('open');
+}
+
+function copy(btn) {
+  const pre = btn.closest('pre');
+  const text = pre.innerText.replace('copy\n', '').replace('copy', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1500);
+  });
+}
+
+// highlight active nav on scroll
+const sections = document.querySelectorAll('[id]');
+const navItems = document.querySelectorAll('.nav-item');
+
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navItems.forEach(n => {
+        n.classList.toggle('active', n.getAttribute('href') === '#' + e.target.id);
+      });
+    }
+  });
+}, { threshold: 0.3 });
+
+sections.forEach(s => obs.observe(s));
+</script>
+
+</body>
+</html>

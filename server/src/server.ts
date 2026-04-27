@@ -1,32 +1,79 @@
-import express from 'express';
-import { serverConfig } from './config';
-import v1Router from './routers/v1/index.routes';
-import { appErrorHandler, genericErrorHandler } from './middlewares/error.middleware';
-import logger from './config/logger.config';
-import { connectDB } from './db/db';
+import express from "express";
+import cors from "cors";
+
+import { serverConfig } from "./config";
+import v1Router from "./routers/v1/index.routes";
+import { appErrorHandler, genericErrorHandler } from "./middlewares/error.middleware";
+import logger from "./config/logger.config";
+import { connectDB } from "./db/db";
+import { initSocket } from "./socket";
 
 const app = express();
 
+/**
+ * =========================
+ * Core Middlewares
+ * =========================
+ */
 app.use(express.json());
 
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  })
+);
+
 /**
- * Registering all the routers and their corresponding routes with out app server object.
+ * =========================
+ * API Routes
+ * =========================
  */
-
-app.use('/api/v1', v1Router);
-
-
+app.use("/api/v1", v1Router);
 
 /**
- * Add the error handler middleware
+ * =========================
+ * 404 Handler (IMPORTANT)
+ * =========================
  */
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
+});
 
+/**
+ * =========================
+ * Error Handlers
+ * =========================
+ */
 app.use(appErrorHandler);
 app.use(genericErrorHandler);
 
-// connect DB
-connectDB();
-app.listen(serverConfig.PORT, () => {
-    logger.info(`Server is running on http://localhost:${serverConfig.PORT}`);
-    logger.info(`Press Ctrl+C to stop the server.`);
-});
+/**
+ * =========================
+ * Start Server Safely
+ * =========================
+ */
+const startServer = async () => {
+  try {
+    await connectDB();
+    logger.info("MongoDB connected successfully");
+
+    const server = initSocket(app);
+
+    server.listen(serverConfig.PORT, () => {
+      logger.info(
+        `Server is running on http://localhost:${serverConfig.PORT}`
+      );
+      logger.info("Press Ctrl+C to stop the server.");
+    });
+  } catch (error) {
+    logger.error("Failed to start server:", error);
+    process.exit(1);
+  }
+};
+
+startServer();

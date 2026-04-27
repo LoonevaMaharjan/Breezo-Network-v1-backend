@@ -72,27 +72,45 @@ createNode = async (
   /**
    *  DASHBOARD
    */
-  dashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
-    try {
-      const email = req.user?.email;
+dashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const email = req.user?.email;
+    const { wallet } = req.body;
 
-      if (!email) {
-         res.status(401).json({
-          success: false,
-          message: "Unauthorized",
-        });
-      }
-
-      const result = await this.nodeService.getUserDashboard(email);
-
-       res.json({
-        success: true,
-        data: result,
+    // ❌ missing user
+    if (!email) {
+       res.status(401).json({
+        success: false,
+        message: "Unauthorized: missing user",
+        data: []
       });
-    } catch (error) {
-      next(error);
     }
-  };
+
+    // ❌ missing wallet
+    if (!wallet) {
+       res.status(400).json({
+        success: false,
+        message: "Wallet required",
+        data: []
+      });
+    }
+
+    const result = await this.nodeService.getUserDashboard(email, wallet);
+
+     res.json({
+      success: true,
+      data: result || []
+    });
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
+
+
 
   /**
    *  REQUEST LINK

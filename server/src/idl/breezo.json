@@ -1,5 +1,5 @@
 {
-  "address": "5ygRCA7pF2h7GeGxP9RaiNQNTNb5J5GnB9XSzxh75gVw",
+  "address": "HtKDMvdm79VWbxmaeeBz5yM4qCV6Tg28MeYAk6honseH",
   "metadata": {
     "name": "breezo",
     "version": "0.1.0",
@@ -23,7 +23,8 @@
       "discriminator": [4, 114, 188, 164, 149, 249, 198, 237],
       "accounts": [
         { "name": "nodeAccount", "writable": true,  "signer": false },
-        { "name": "authority",   "writable": false, "signer": true  }
+        { "name": "authority",   "writable": false, "signer": true  },
+        { "name": "backend",     "writable": false, "signer": false }
       ],
       "args": [
         { "name": "amount", "type": "u64" }
@@ -35,6 +36,17 @@
       "accounts": [
         { "name": "nodeAccount",   "writable": true,  "signer": false },
         { "name": "owner",         "writable": true,  "signer": true  },
+        { "name": "treasury",      "writable": true,  "signer": false },
+        { "name": "systemProgram", "writable": false, "signer": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "initTreasury",
+      "discriminator": [92, 216, 156, 129, 217, 52, 152, 234],
+      "accounts": [
+        { "name": "treasury",      "writable": true,  "signer": false },
+        { "name": "authority",     "writable": true,  "signer": true  },
         { "name": "systemProgram", "writable": false, "signer": false }
       ],
       "args": []
@@ -44,6 +56,10 @@
     {
       "name": "NodeAccount",
       "discriminator": [148, 197, 172, 7, 30, 254, 99, 200]
+    },
+    {
+      "name": "Treasury",
+      "discriminator": [238, 239, 123, 238, 89, 1, 168, 253]
     }
   ],
   "types": [
@@ -53,10 +69,16 @@
         "kind": "struct",
         "fields": [
           { "name": "owner",           "type": "pubkey" },
-          { "name": "authority",       "type": "pubkey" },
           { "name": "devicePublicKey", "type": "pubkey" },
           { "name": "rewardBalance",   "type": "u64"    }
         ]
+      }
+    },
+    {
+      "name": "Treasury",
+      "type": {
+        "kind": "struct",
+        "fields": []
       }
     }
   ],

@@ -36,7 +36,7 @@ router.post("/ingest", controller.ingest);
 
  * user sees all nodes + rewards
  */
-router.get("/dashboard", isAuthenticated, controller.dashboard);
+router.post("/dashboard", isAuthenticated, controller.dashboard);
 
 /**
 

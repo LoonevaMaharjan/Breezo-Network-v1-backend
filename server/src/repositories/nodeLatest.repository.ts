@@ -1,4 +1,5 @@
 import { NodeLatest } from "../models/nodelatest.model";
+import { Node } from "../models/node.model";
 
 export class NodeLatestRepository {
 
@@ -6,7 +7,6 @@ export class NodeLatestRepository {
      * 🔄 UPSERT SENSOR DATA + REWARD
      */
     async upsertNodeLatest(data: any, rewardIncrement: number) {
-
         const { nodeId } = data;
 
         return NodeLatest.findOneAndUpdate(
@@ -14,15 +14,15 @@ export class NodeLatestRepository {
             {
                 $set: {
                     ...data,
-                    lastSeen: new Date()
+                    lastSeen: new Date(),
                 },
                 $inc: {
-                    reward: rewardIncrement
-                }
+                    reward: rewardIncrement,
+                },
             },
             {
                 upsert: true,
-                new: true
+                new: true,
             }
         );
     }
@@ -31,20 +31,23 @@ export class NodeLatestRepository {
      * 📊 GET ALL NODES (MAP VIEW)
      */
     async getAllNodesForMap() {
-        return NodeLatest.find({}, {
-            nodeId: 1,
-            ownerEmail: 1,
-            temperature: 1,
-            humidity: 1,
-            pm25: 1,
-            pm10: 1,
-            aqi: 1,
-            aqiLevel: 1,
-            reward: 1,
-            location: 1,
-            lastSeen: 1,
-            updatedAt: 1
-        });
+        return NodeLatest.find(
+            {},
+            {
+                nodeId: 1,
+                ownerEmail: 1,
+                temperature: 1,
+                humidity: 1,
+                pm25: 1,
+                pm10: 1,
+                aqi: 1,
+                aqiLevel: 1,
+                reward: 1,
+                location: 1,
+                lastSeen: 1,
+                updatedAt: 1,
+            }
+        );
     }
 
     /**
@@ -58,11 +61,10 @@ export class NodeLatestRepository {
      * 🔐 MARK SYNCING (avoid duplicate Solana calls)
      */
     async markSyncing(nodeId: string) {
-         NodeLatest.updateOne(
+        return NodeLatest.updateOne(
             { nodeId },
-            { syncing: true }
+            { $set: { syncing: true } }
         );
-        return
     }
 
     /**
@@ -71,7 +73,7 @@ export class NodeLatestRepository {
     async clearSyncFlag(nodeId: string) {
         return NodeLatest.updateOne(
             { nodeId },
-            { syncing: false }
+            { $set: { syncing: false } }
         );
     }
 
@@ -81,20 +83,54 @@ export class NodeLatestRepository {
     async resetReward(nodeId: string) {
         return NodeLatest.findOneAndUpdate(
             { nodeId },
-            { reward: 0 },
+            { $set: { reward: 0 } },
             { new: true }
         );
     }
 
     /**
-     * 📡 GET USER NODES (DASHBOARD)
+     * 📡 GET USER NODES (DASHBOARD - EMAIL + WALLET SAFE)
      */
-    async getNodesByEmail(email: string) {
-        return NodeLatest.find({ ownerEmail: email });
-    }
+async getNodeByEmailAndWallet(ownerEmail: string, ownerWallet: string) {
+
+  // 1. VERIFY OWNERSHIP FROM NODE REGISTRY
+  const node = await Node.findOne({
+    ownerEmail,
+    ownerWallet,
+    isLinked: true,
+  });
+
+  if (!node) return [];
+
+  // 2. FETCH LIVE DATA
+  const liveNodes = await NodeLatest.find({ nodeId: node.nodeId });
+
+  // 3. FORMAT — include nodeAccount + ownerWallet from Node registry
+  return liveNodes.map((n) => ({
+    nodeId: n.nodeId,
+    location: n.location || null,
+
+    temperature: n.temperature,
+    humidity:    n.humidity,
+
+    pm25:     n.pm25,
+    pm10:     n.pm10,
+    aqi:      n.aqi,
+    aqiLevel: n.aqiLevel,
+
+    reward:   n.reward,
+    syncing:  n.syncing,
+    lastSeen: n.lastSeen,
+
+    // ✅ THESE WERE MISSING — required for on-chain fetch + claim
+    nodeAccount:      node.nodeAccount,
+    ownerWallet:      node.ownerWallet,
+    devicePublicKey:  node.devicePublicKey,
+  }));
+}
 
     /**
-     * ⚡ UPDATE ONLY SENSOR DATA (optional fast path)
+     * ⚡ UPDATE ONLY SENSOR DATA (FAST PATH)
      */
     async updateSensorData(nodeId: string, data: any) {
         return NodeLatest.findOneAndUpdate(
@@ -102,8 +138,8 @@ export class NodeLatestRepository {
             {
                 $set: {
                     ...data,
-                    lastSeen: new Date()
-                }
+                    lastSeen: new Date(),
+                },
             },
             { new: true }
         );
