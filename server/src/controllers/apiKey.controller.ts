@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { IApiKeyService } from "../service/apiKey.service";
+import { ApiKeyService } from "../service/apiKey.service";
 import { AuthRequest } from "../middlewares/isAuth.middleware";
 
 export interface IApiKeyController {
@@ -23,7 +23,7 @@ export interface IApiKeyController {
 }
 
 export class ApiKeyController implements IApiKeyController {
-  constructor(private apiKeyService: IApiKeyService) {}
+  constructor(private apiKeyService: ApiKeyService) {}
 
   /**
    * POST /api-keys
@@ -34,8 +34,9 @@ export class ApiKeyController implements IApiKeyController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.user?.id; // from auth middleware
+      const userId = req.user?.userId; // from auth middleware
       const { name } = req.body;
+
 
       const result = await this.apiKeyService.create(
         userId,
@@ -51,6 +52,67 @@ export class ApiKeyController implements IApiKeyController {
       next(error);
     }
   };
+  /**
+ * POST /api-keys/purchase
+ */
+addCredits = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = req.user?.userId;
+    const { apiKeyId, amount } = req.body;
+
+    // =========================
+    // VALIDATION
+    // =========================
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+      return;
+    }
+
+    if (!apiKeyId) {
+      res.status(400).json({
+        success: false,
+        message: "apiKeyId is required",
+      });
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      res.status(400).json({
+        success: false,
+        message: "amount must be greater than 0",
+      });
+      return;
+    }
+
+    // =========================
+    // SERVICE CALL
+    // =========================
+    const result = await this.apiKeyService.addCredits(
+      userId,
+      apiKeyId,
+      amount
+    );
+
+    // =========================
+    // RESPONSE
+    // =========================
+    res.status(200).json({
+      success: true,
+      message: "Credits added successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
   /**
    * GET /api-keys
@@ -61,7 +123,7 @@ export class ApiKeyController implements IApiKeyController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
 
       const result = await this.apiKeyService.getByUser(userId);
 

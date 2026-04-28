@@ -6,7 +6,11 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: "User" | "Node" | "Admin";
-  wallet?: string; // 👈 added
+  wallet?: string;
+
+  // ✅ CREDIT SYSTEM
+  credits: number;
+  usedCredits: number;
 }
 
 const userSchema = new mongoose.Schema<IUser>(
@@ -33,7 +37,18 @@ const userSchema = new mongoose.Schema<IUser>(
     },
     wallet: {
       type: String,
-      default: null, // 👈 added
+      default: null,
+    },
+
+    // 🔥 NEW FIELDS
+    credits: {
+      type: Number,
+      default: 0,
+    },
+
+    usedCredits: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }

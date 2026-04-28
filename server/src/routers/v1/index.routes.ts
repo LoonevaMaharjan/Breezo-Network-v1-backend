@@ -10,6 +10,7 @@ import withdrawRouter from "./withdraw.routes";
 import weatherRouter from "./weather.routes";
 import apiKeyRouter from "./apiKey.routes";
 import usageRouter from "./apiUsage.routes";
+import userCreditRouter from "./userCredit.routes";
 
 const v1Router = express.Router();
 
@@ -20,9 +21,10 @@ v1Router.use("/node", nodeRouter);
 v1Router.use("/map", nodeMapRouter);
 v1Router.use("/withdraw", withdrawRouter);
 
-// 🔥 NEW SaaS API routes
+
 v1Router.use("/weather", weatherRouter);   // public (API key based)
 v1Router.use("/api-keys", apiKeyRouter);   // user dashboard
-v1Router.use("/usage", usageRouter);       // analytics
+v1Router.use("/usage", usageRouter);
+v1Router.use("/credit", userCreditRouter);         // analytics
 
 export default v1Router;

@@ -7,6 +7,13 @@ import { appErrorHandler, genericErrorHandler } from "./middlewares/error.middle
 import logger from "./config/logger.config";
 import { connectDB } from "./db/db";
 import { initSocket } from "./socket";
+import { initApiUsageListener } from "./service/apiUsage.listener";
+
+
+
+
+// initialize event system
+
 
 const app = express();
 
@@ -24,6 +31,8 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
+
+initApiUsageListener();
 
 /**
  * =========================

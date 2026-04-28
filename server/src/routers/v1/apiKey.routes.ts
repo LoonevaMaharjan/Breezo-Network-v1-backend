@@ -16,6 +16,8 @@ apiKeyRouter.use(isAuthenticated);
 
 // routes
 apiKeyRouter.post("/", apiKeyController.create);
+apiKeyRouter.post("/api-keys/purchase", apiKeyController.addCredits);
+
 
 apiKeyRouter.get("/", apiKeyController.getMyKeys);
 

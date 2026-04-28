@@ -5,130 +5,122 @@ import { NodeService } from "../service/node.service";
 export class NodeController {
   constructor(private nodeService: NodeService) {}
 
-  /**
- *  CREATE NODE (REGISTER DEVICE)
- */
-createNode = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const { nodeId, devicePublicKey, ownerEmail, ownerWallet } = req.body;
+  // =====================================================
+  // CREATE NODE
+  // =====================================================
+  createNode = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const { nodeId, devicePublicKey, ownerEmail, ownerWallet } = req.body;
 
-    if (!nodeId || !devicePublicKey || !ownerEmail || !ownerWallet) {
-      res.status(400).json({
-        success: false,
-        message: "Missing required fields",
+      if (!nodeId || !devicePublicKey || !ownerEmail || !ownerWallet) {
+        res.status(400).json({
+          success: false,
+          message: "Missing required fields",
+        });
+        return;
+      }
+
+      const result = await this.nodeService.createNode({
+        nodeId,
+        devicePublicKey,
+        ownerEmail,
+        ownerWallet,
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "Node created successfully",
+        data: result,
       });
       return;
+    } catch (error) {
+      next(error);
     }
+  };
 
-    const result = await this.nodeService.createNode({
-      nodeId,
-      devicePublicKey,
-      ownerEmail,
-      ownerWallet,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Node created successfully",
-      data: result,
-    });
-    return; // ✅ important
-
-  } catch (error) {
-    next(error);
-  }
-};
-
-
-
-  /**
-   *  ESP32 INGESTION
-   */
+  // =====================================================
+  // INGEST DATA
+  // =====================================================
   ingest = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    console.log("1. ingest hit", req.body);
+    try {
+      const result = await this.nodeService.ingestData(req.body);
 
-    const result = await this.nodeService.ingestData(req.body);
-
-    console.log("2. ingestData done", result);
-
-    res.status(200).json({
-      success: true,
-      message: "Data ingested successfully",
-      data: result,
-    });
-
-    console.log("3. response sent");
-  } catch (error) {
-    console.error("ingest error:", error);
-    next(error);
-  }
-};
-
-  /**
-   *  DASHBOARD
-   */
-dashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  try {
-    const email = req.user?.email;
-    const { wallet } = req.body;
-
-    // ❌ missing user
-    if (!email) {
-       res.status(401).json({
-        success: false,
-        message: "Unauthorized: missing user",
-        data: []
+      res.status(200).json({
+        success: true,
+        message: "Data ingested successfully",
+        data: result,
       });
+    } catch (error) {
+      next(error);
     }
+  };
 
-    // ❌ missing wallet
-    if (!wallet) {
-       res.status(400).json({
-        success: false,
-        message: "Wallet required",
-        data: []
+  // =====================================================
+  // DASHBOARD
+  // =====================================================
+  dashboard = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const email = req.user?.email;
+      const wallet = req.body.wallet;
+
+      if (!email) {
+        res.status(401).json({
+          success: false,
+          message: "Unauthorized: missing user",
+        });
+        return;
+      }
+
+      if (!wallet) {
+        res.status(400).json({
+          success: false,
+          message: "Wallet required",
+        });
+        return;
+      }
+
+      const result = await this.nodeService.getUserDashboard(email, wallet);
+
+      res.json({
+        success: true,
+        data: result || [],
       });
+    } catch (error) {
+      next(error);
     }
+  };
 
-    const result = await this.nodeService.getUserDashboard(email, wallet);
-
-     res.json({
-      success: true,
-      data: result || []
-    });
-
-  } catch (error) {
-    next(error);
-  }
-};
-
-
-
-
-
-
-  /**
-   *  REQUEST LINK
-   */
-  requestLink = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  // =====================================================
+  // REQUEST LINK
+  // =====================================================
+  requestLink = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const { devicePublicKey } = req.body;
 
       if (!devicePublicKey) {
-         res.status(400).json({
+        res.status(400).json({
           success: false,
-          message: "publicKey required",
+          message: "devicePublicKey required",
         });
+        return;
       }
 
-      const result = await this.nodeService.requestLink(devicePublicKey);
+      const result =
+        await this.nodeService.requestLink(devicePublicKey);
 
-       res.json({
+      res.json({
         success: true,
         data: result,
       });
@@ -137,28 +129,43 @@ dashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
     }
   };
 
-  /**
-   *  VERIFY LINK
-   */
-  verifyLink = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  // =====================================================
+  // VERIFY LINK
+  // =====================================================
+  verifyLink = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const user = req.user;
 
       if (!user) {
-         res.status(401).json({
+        res.status(401).json({
           success: false,
           message: "Unauthorized",
         });
-        return
+        return;
+      }
+
+      const { devicePublicKey, signature } = req.body;
+
+      if (!devicePublicKey || !signature) {
+        res.status(400).json({
+          success: false,
+          message: "Missing fields",
+        });
+        return;
       }
 
       const result = await this.nodeService.verifyLink({
-        ...req.body,
+        devicePublicKey,
+        signature,
         email: user.email,
         wallet: user.wallet,
       });
 
-       res.json({
+      res.json({
         success: true,
         data: result,
       });
@@ -167,31 +174,37 @@ dashboard = async (req: AuthRequest, res: Response, next: NextFunction) => {
     }
   };
 
-  /**
-   *  CLAIM REWARD
-   */
-  claimReward = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  // =====================================================
+  // CLAIM REWARD
+  // =====================================================
+  claimReward = async (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
       const { nodeId } = req.body;
       const user = req.user;
 
       if (!user) {
-         res.status(401).json({
+        res.status(401).json({
           success: false,
           message: "Unauthorized",
         });
+        return;
       }
 
       if (!nodeId) {
-         res.status(400).json({
+        res.status(400).json({
           success: false,
           message: "nodeId required",
         });
+        return;
       }
 
       const result = await this.nodeService.claimReward(nodeId, user);
 
-       res.json({
+      res.json({
         success: true,
         data: result,
       });

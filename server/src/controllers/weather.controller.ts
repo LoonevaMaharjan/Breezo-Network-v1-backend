@@ -1,128 +1,71 @@
 import { Request, Response, NextFunction } from "express";
 import { IWeatherService } from "../service/weather.service";
 
-export interface IWeatherController {
-  current(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void>;
-
-  nearby(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void>;
-
-  history(
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ): Promise<void>;
+interface TypedRequest<T> extends Request {
+  validatedQuery?: T;
 }
 
-export class WeatherController implements IWeatherController {
-  constructor(private weatherService: IWeatherService) {}
+export class WeatherController {
+  constructor(private service: IWeatherService) {}
 
-  /**
-   * GET /weather/current?nodeId=xxx
-   */
   current = async (
-    req: Request,
+    req: TypedRequest<{ nodeId: string }>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { nodeId } = req.query;
+      const { nodeId } = req.validatedQuery!;
 
-      if (!nodeId) {
-        res.status(400).json({
-          success: false,
-          message: "nodeId is required",
-        });
-        return;
-      }
+      const result = await this.service.getCurrent(nodeId);
 
-      const result = await this.weatherService.getCurrent(
-        String(nodeId)
-      );
-
-      res.status(200).json({
+      res.json({
         success: true,
-        message: "Current weather fetched successfully",
         data: result,
       });
-    } catch (error) {
-      next(error);
+    } catch (err) {
+      next(err);
     }
   };
 
-  /**
-   * GET /weather/nearby?lat=..&lng=..
-   */
   nearby = async (
-    req: Request,
+    req: TypedRequest<{ lat: number; lng: number }>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { lat, lng } = req.query;
+      const { lat, lng } = req.validatedQuery!;
 
-      if (!lat || !lng) {
-        res.status(400).json({
-          success: false,
-          message: "lat and lng are required",
-        });
-        return;
-      }
+      const result = await this.service.getNearby(lat, lng);
 
-      const result = await this.weatherService.getNearby(
-        Number(lat),
-        Number(lng)
-      );
-
-      res.status(200).json({
+      res.json({
         success: true,
-        message: "Nearby sensor fetched successfully",
         data: result,
       });
-    } catch (error) {
-      next(error);
+    } catch (err) {
+      next(err);
     }
   };
 
-  /**
-   * GET /weather/history?nodeId=xxx&from=...&to=...
-   */
   history = async (
-    req: Request,
+    req: TypedRequest<{ nodeId: string; from: string; to: string }>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { nodeId, from, to } = req.query;
+      const { nodeId, from, to } = req.validatedQuery!;
 
-      if (!nodeId || !from || !to) {
-        res.status(400).json({
-          success: false,
-          message: "nodeId, from and to are required",
-        });
-        return;
-      }
-
-      const result = await this.weatherService.getHistory(
-        String(nodeId),
-        new Date(String(from)),
-        new Date(String(to))
+      const result = await this.service.getHistory(
+        nodeId,
+        new Date(from),
+        new Date(to)
       );
 
-      res.status(200).json({
+      res.json({
         success: true,
-        message: "Weather history fetched successfully",
         data: result,
       });
-    } catch (error) {
-      next(error);
+    } catch (err) {
+      next(err);
     }
   };
 }

@@ -7,7 +7,7 @@ export class NodeMapController {
     constructor(private nodeMapService: NodeMapService) {}
 
     /**
-     * PUBLIC MAP API (Leaflet / Mapbox)
+     * PUBLIC MAP API 
      */
     getMapNodes = async (req: Request, res: Response, next: NextFunction) => {
         try {

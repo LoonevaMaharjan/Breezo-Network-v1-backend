@@ -1,40 +1,37 @@
-import { Request, Response, NextFunction } from "express";
-import { ApiUsage } from "../models/apiUsage.model";
+import { Response, NextFunction } from "express";
 import { ApiKeyService } from "../service/apiKey.service";
 import { ApiKeyRepository } from "../repositories/apiKey.repository";
+import { ApiKeyRequest } from "./apiKey.middleware";
 
-// simple instance (no DI)
+// =========================
+// SERVICE INSTANCE
+// =========================
 const apiKeyService = new ApiKeyService(new ApiKeyRepository());
 
+/**
+ * =========================
+ * USAGE MIDDLEWARE
+ * - Runs AFTER response is sent
+ * - Increments API key usage safely
+ * =========================
+ */
 export const usageMiddleware = (
-  req: Request,
+  req: ApiKeyRequest,
   res: Response,
   next: NextFunction
-) => {
+): void => {
   res.on("finish", () => {
-    // run async safely without blocking event loop
+    const apiKey = req.apiKey;
+
+    //  no api key attached
+    if (!apiKey) return;
+
+    //  async fire-and-forget (DO NOT block response)
     setImmediate(async () => {
       try {
-        const apiKey = (req as any).apiKey;
-
-        if (!apiKey) return;
-
-        // safety check
-        if (!apiKey.userId || !apiKey.key) return;
-
-        // log usage
-        await ApiUsage.create({
-          userId: apiKey.userId,
-          apiKey: apiKey.key,
-          endpoint: req.originalUrl,
-          method: req.method,
-          ip: req.ip,
-        });
-
-        // increment counter
-        await apiKeyService.increment(apiKey.key);
+        await apiKeyService.increment(apiKey._id.toString());
       } catch (err) {
-        console.error("Usage middleware error:", err);
+        console.error(" Usage increment failed:", err);
       }
     });
   });

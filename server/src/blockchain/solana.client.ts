@@ -1,6 +1,7 @@
 import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
-import { Connection, Keypair, clusterApiUrl } from "@solana/web3.js";
+import { Connection, Keypair, clusterApiUrl ,PublicKey} from "@solana/web3.js";
 import bs58 from "bs58";
+
 import { serverConfig } from "../config";
 import idl from "../idl/breezo.json";
 
@@ -20,6 +21,11 @@ export class SolanaClient {
       commitment: "confirmed",
     });
 
-    this.program = new Program(idl as any, this.provider);
+    this.program = new Program(
+  idl as any,
+  new PublicKey(idl.metadata.address),
+  this.provider
+);
+
   }
 }

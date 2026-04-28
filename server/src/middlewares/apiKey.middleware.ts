@@ -1,56 +1,66 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
+import { AuthRequest } from "../middlewares/isAuth.middleware";
+
 import { ApiKeyRepository } from "../repositories/apiKey.repository";
 import { ApiKeyService } from "../service/apiKey.service";
+import { CreditEngineService } from "../service/creditEngine.service";
 
-// simple instance (no DI)
-const service = new ApiKeyService(new ApiKeyRepository());
 
-export interface ApiKey {
-  id: string;
-  key: string;
-  userId: string;
-  expiresAt: Date;
-  isActive: boolean;
+const apiKeyService = new ApiKeyService(new ApiKeyRepository());
+const creditEngine = new CreditEngineService();
+
+
+export interface ApiKeyRequest extends AuthRequest {
+  apiKey?: any;
+  remainingCredits?: number;
 }
 
-// extend Express Request safely
-export interface AuthenticatedRequest extends Request {
-  apiKey?: ApiKey;
-}
 
 export const apiKeyMiddleware = async (
-  req: AuthenticatedRequest,
+  req: ApiKeyRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const headerKey = req.header("x-api-key") || " ";
+    const key = req.header("x-api-key");
 
-    if (!headerKey) {
-       res.status(401).json({
+
+    if (!key) {
+      return res.status(401).json({
         success: false,
         message: "API key required",
       });
     }
 
-    const apiKey = await service.validate(headerKey);
+    // 🔍 validate API key
+    const apiKey = await apiKeyService.validate(key);
 
     if (!apiKey) {
-       res.status(403).json({
+      return res.status(403).json({
         success: false,
-        message: "Invalid or expired API key",
+        message: "Invalid or inactive API key",
       });
     }
 
+    // 💰 charge user credits (GLOBAL USER WALLET LOGIC)
+    const result = await creditEngine.charge(apiKey.userId.toString(), 1);
+
+    if (!result.allowed) {
+      return res.status(402).json({
+        success: false,
+        message: "Insufficient credits",
+        remainingCredits: result.credits,
+      });
+    }
+
+    // ✅ attach to request (SAFE + TYPED)
     req.apiKey = apiKey;
+    req.user = req.user || {};
+    req.user.userId = apiKey.userId.toString();
+    req.remainingCredits = result.credits;
 
-     next();
-  } catch (error) {
-    console.error("API Key Middleware Error:", error);
-
-     res.status(500).json({
-      success: false,
-      message: "Internal server error in API key validation",
-    });
+    next();
+  } catch (err) {
+    next(err);
   }
 };

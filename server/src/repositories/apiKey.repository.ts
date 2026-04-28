@@ -1,74 +1,71 @@
 import { ApiKey } from "../models/apiKey.model";
 
-export interface IApiKeyRepository {
-  create(data: {
-    userId: string;
-    key: string;
-    name?: string;
-  }): Promise<any>;
-
-  findByKey(key: string): Promise<any | null>;
-
-  findByUser(userId: string): Promise<any[]>;
-
-  deactivate(id: string): Promise<any | null>;
-
-  incrementUsage(key: string): Promise<void>;
-
-}
-
-export class ApiKeyRepository implements IApiKeyRepository {
+export class ApiKeyRepository {
 
 
-  /**
-   * Create new API key
-   */
-  async create(data: {
-    userId: string;
-    key: string;
-    name?: string;
-  }) {
-    return ApiKey.create({
-      userId: data.userId,
-      key: data.key,
-      name: data.name,
-    });
+  // ➕ CREATE
+
+  async create(data: any) {
+    return ApiKey.create(data);
   }
 
-  /**
-   * Find API key by key string
-   */
+
+  // 🔍 FIND BY KEY (string key)
+
   async findByKey(key: string) {
-    return ApiKey.findOne({ key, isActive: true }).lean();
+    return ApiKey.findOne({ key });
   }
 
-  /**
-   * Get all keys of a user
-   */
+
+  // 🔍 FIND BY ID (Mongo _id)
+
+  async findById(id: string) {
+    return ApiKey.findById(id); // ✅ FIXED
+  }
+
+
+  //  FIND BY USER
+
   async findByUser(userId: string) {
-    return ApiKey.find({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    return ApiKey.find({ userId });
   }
 
-  /**
-   * Deactivate API key
-   */
+
+  //  DEACTIVATE
+
   async deactivate(id: string) {
     return ApiKey.findByIdAndUpdate(
       id,
       { isActive: false },
+      { new: true } //  return updated doc
+    );
+  }
+
+
+  // 💰 ADD CREDITS
+
+  async addCredits(id: string, amount: number) {
+    return ApiKey.findByIdAndUpdate(
+      id,
+      { $inc: { credits: amount } }, //  add (not overwrite)
       { new: true }
     );
   }
 
-  /**
-   * Increment usage count
-   */
-  async incrementUsage(key: string): Promise<void> {
-    await ApiKey.updateOne(
-      { key },
-      { $inc: { usedCount: 1 } }
+
+  // ⚡ CONSUME CREDIT
+
+  async consumeCredit(id: string) {
+    return ApiKey.findOneAndUpdate(
+      { _id: id, credits: { $gt: 0 } }, // ✅ ensure credit exists
+      {
+        $inc: {
+          credits: -1,
+          usedCredits: 1,
+          usedCount: 1,
+        },
+      },
+      { new: true }
     );
   }
 }

@@ -2,26 +2,41 @@ import { Router } from "express";
 import { WeatherController } from "../../controllers/weather.controller";
 import { SensorRepository } from "../../repositories/sensor.repository";
 import { WeatherService } from "../../service/weather.service";
-// import { apiKeyMiddleware } from "../../middlewares/apiKey.middleware";
-import { usageMiddleware } from "../../middlewares/usage.middleware";
-import { apiKeyMiddleware } from "../../middlewares/apiKey.middleware";
+import { validateQueryParams } from "../../validators";
+import { weatherCurrentSchema, weatherNearbySchema, weatherHistorySchema } from "../../validators/weather.validatior";
+
 
 const weatherRouter = Router();
 
-// dependencies (DI)
-const sensorRepository = new SensorRepository();
-const weatherService = new WeatherService(sensorRepository);
-const weatherController = new WeatherController(weatherService);
+const controller = new WeatherController(
+  new WeatherService(new SensorRepository())
+);
 
-// apply API key + usage tracking
-weatherRouter.use(usageMiddleware);
-weatherRouter.use(apiKeyMiddleware);
+// =========================
+// CURRENT WEATHER
+// =========================
+weatherRouter.get(
+  "/current",
+  validateQueryParams(weatherCurrentSchema),
+  controller.current
+);
 
-// routes
-weatherRouter.get("/current", weatherController.current);
+// =========================
+// NEARBY WEATHER
+// =========================
+weatherRouter.get(
+  "/nearby",
+  validateQueryParams(weatherNearbySchema),
+  controller.nearby
+);
 
-weatherRouter.get("/nearby", weatherController.nearby);
-
-weatherRouter.get("/history", weatherController.history);
+// =========================
+// HISTORY WEATHER
+// =========================
+weatherRouter.get(
+  "/history",
+  validateQueryParams(weatherHistorySchema),
+  controller.history
+);
 
 export default weatherRouter;

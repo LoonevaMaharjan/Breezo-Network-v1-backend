@@ -1,70 +1,72 @@
-import { IApiKeyRepository } from "../repositories/apiKey.repository";
+import { ApiKeyRepository } from "../repositories/apiKey.repository";
 import { generateApiKey } from "../utils/keygen.utils";
 
-export interface IApiKeyService {
-  create(userId: string, name: string): Promise<any>;
-  validate(key: string): Promise<any | null>;
-  increment(key: string): Promise<void>;
-  getByUser(userId: string): Promise<any[]>;
-  deactivate(id: string): Promise<any>;
-}
+export class ApiKeyService {
+  constructor(private repo: ApiKeyRepository) {}
 
-export class ApiKeyService implements IApiKeyService {
-  constructor(
-    private readonly apiKeyRepository: IApiKeyRepository
-  ) {}
-
-  /**
-   * Create new API key
-   */
+  // =========================
+  // 🔑 CREATE NEW API KEY
+  // =========================
   async create(userId: string, name: string) {
     const key = generateApiKey();
 
-    return this.apiKeyRepository.create({
+    return this.repo.create({
       userId,
       key,
       name,
+      credits: 0,
+      usedCredits: 0,
+      usedCount: 0,
+      isActive: true,
     });
   }
 
-  /**
-   * Validate API key
-   */
- async validate(key: string) {
-  const apiKey = await this.apiKeyRepository.findByKey(key);
+  // =========================
+  // 🔍 VALIDATE API KEY
+  // =========================
+  async validate(key: string) {
+    const apiKey = await this.repo.findByKey(key);
 
-  if (!apiKey) {
-    return null;
+    if (!apiKey || !apiKey.isActive) return null;
+
+    if (apiKey.credits <= 0) return null;
+
+    return apiKey;
   }
 
-  const isLimitExceeded = apiKey.usedCount >= apiKey.requestLimit;
-
-  if (isLimitExceeded) {
-    return null;
+  // =========================
+  // 📉 CONSUME CREDIT
+  // =========================
+  async increment(apiKeyId: string) {
+    return this.repo.consumeCredit(apiKeyId);
   }
 
-  return apiKey;
-}
+  // =========================
+  // 💰 ADD CREDIT
+  // =========================
+  async addCredits(userId: string, apiKeyId: string, amount: number) {
+    const key = await this.repo.findById(apiKeyId);
 
+    if (!key) throw new Error("API key not found");
 
-  /**
-   * Increment usage count
-   */
-  async increment(key: string) {
-    await this.apiKeyRepository.incrementUsage(key);
+    if (key.userId.toString() !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    return this.repo.addCredits(apiKeyId, amount);
   }
 
-  /**
-   * Get all keys of a user
-   */
+  // =========================
+  // 📄 GET USER KEYS
+  // =========================
   async getByUser(userId: string) {
-    return this.apiKeyRepository.findByUser(userId);
+    return this.repo.findByUser(userId);
   }
 
-  /**
-   * Deactivate API key
-   */
-  async deactivate(id: string) {
-    return this.apiKeyRepository.deactivate(id);
+  // =========================
+  // ❌ DEACTIVATE
+  // =========================
+  async deactivate(apiKeyId: string) {
+    return this.repo.deactivate(apiKeyId);
   }
 }
