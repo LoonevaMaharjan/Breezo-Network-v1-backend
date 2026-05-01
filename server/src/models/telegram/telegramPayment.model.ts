@@ -1,5 +1,8 @@
 import mongoose, { Document } from "mongoose";
 
+/**
+ * Telegram Payment document
+ */
 export interface ITelegramPayment extends Document {
   paymentId: string;
   userId: string;
@@ -7,15 +10,15 @@ export interface ITelegramPayment extends Document {
 
   status: "pending" | "success" | "failed";
 
-  // 🔥 Blockchain fields
+  // blockchain
   memo: string;
   walletAddress: string;
   tokenMint: string;
 
-  // 🔍 Verification
+  // verification
   txSignature?: string;
 
-  // ⏱️ lifecycle
+  // lifecycle
   expiresAt?: Date;
   paidAt?: Date;
 }
@@ -23,9 +26,7 @@ export interface ITelegramPayment extends Document {
 const TelegramPaymentSchema = new mongoose.Schema<ITelegramPayment>(
   {
     paymentId: { type: String, required: true, unique: true, index: true },
-
     userId: { type: String, required: true, index: true },
-
     amount: { type: Number, required: true },
 
     status: {
@@ -35,19 +36,13 @@ const TelegramPaymentSchema = new mongoose.Schema<ITelegramPayment>(
       index: true,
     },
 
-    // 🔥 REQUIRED for Solana verification
     memo: { type: String, required: true, index: true },
-
     walletAddress: { type: String, required: true },
-
     tokenMint: { type: String, required: true },
 
-    // 🔐 unique transaction (prevents replay)
     txSignature: { type: String, unique: true, sparse: true },
 
-    // ⏱️ expiry (important)
     expiresAt: { type: Date, index: true },
-
     paidAt: { type: Date },
   },
   { timestamps: true }

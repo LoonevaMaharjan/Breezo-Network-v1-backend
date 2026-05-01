@@ -6,12 +6,13 @@ import { isAuthenticated } from "../../middlewares/isAuth.middleware";
 import { NodeLatestRepository } from "../../repositories/nodeLatest.repository";
 import { SolanaClient } from "../../blockchain/solana.client";
 
+/**
+ * Node routes
+ */
 const router = Router();
 
 /**
-
- *  DEPENDENCY INJECTION
-
+ * Dependency injection
  */
 const nodeRepo = new NodeRepository();
 const nodeLatestRepo = new NodeLatestRepository();
@@ -20,39 +21,33 @@ const solana = new SolanaClient();
 const service = new NodeService(nodeRepo, nodeLatestRepo, solana);
 const controller = new NodeController(service);
 
+/**
+ * Create node
+ */
 router.post("/create", isAuthenticated, controller.createNode);
 
 /**
-
- * DEVICE ROUTES (ESP32)
-
- * secure ingestion with signature verification
+ * Device ingestion (ESP32)
  */
 router.post("/ingest", controller.ingest);
 
 /**
-
- *  USER DASHBOARD
-
- * user sees all nodes + rewards
+ * User dashboard (all nodes + rewards)
  */
 router.post("/dashboard", isAuthenticated, controller.dashboard);
 
 /**
-
- *  NODE LINKING FLOW
-
- * 1️⃣ request challenge
- * 2️⃣ verify + link node
+ * Node linking flow - request challenge
  */
 router.post("/link/request", isAuthenticated, controller.requestLink);
+
+/**
+ * Node linking flow - verify & link
+ */
 router.post("/link/verify", isAuthenticated, controller.verifyLink);
 
 /**
-
- *  REWARD SYSTEM
-
- * claim on-chain reward
+ * Claim reward (on-chain)
  */
 router.post("/reward/claim", isAuthenticated, controller.claimReward);
 

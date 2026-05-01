@@ -3,20 +3,30 @@ import {
   ITelegramPayment,
 } from "../../models/telegram/telegramPayment.model";
 
+/**
+ * Telegram payment repository
+ */
 export class TelegramPaymentRepository {
   /**
    * Create a new payment record
+   *
+   * @param data.paymentId - unique payment id (memo)
+   * @param data.userId - telegram user id
+   * @param data.amount - payment amount
+   * @param data.memo - solana memo for verification
+   * @param data.walletAddress - treasury wallet
+   * @param data.tokenMint - token mint address
+   * @param data.status - payment status (optional)
+   * @param data.expiresAt - expiry time (optional)
+   * @returns created payment document
    */
   async create(data: {
     paymentId: string;
     userId: string;
     amount: number;
-
-    //  REQUIRED
     memo: string;
     walletAddress: string;
     tokenMint: string;
-
     status?: "pending" | "success" | "failed";
     expiresAt?: Date;
   }): Promise<ITelegramPayment> {
@@ -24,19 +34,27 @@ export class TelegramPaymentRepository {
       ...data,
       status: data.status || "pending",
       expiresAt:
-        data.expiresAt || new Date(Date.now() + 10 * 60 * 1000), // 10 min expiry
+        data.expiresAt || new Date(Date.now() + 10 * 60 * 1000),
     });
   }
 
   /**
    * Find payment by paymentId (memo)
+   *
+   * @param paymentId - unique payment identifier
+   * @returns payment document or null
    */
-  async findByPaymentId(paymentId: string): Promise<ITelegramPayment | null> {
+  async findByPaymentId(
+    paymentId: string
+  ): Promise<ITelegramPayment | null> {
     return TelegramPayment.findOne({ paymentId });
   }
 
   /**
    * Find payment by Solana transaction signature
+   *
+   * @param txSignature - blockchain transaction signature
+   * @returns payment document or null
    */
   async findBySignature(
     txSignature: string
@@ -45,7 +63,10 @@ export class TelegramPaymentRepository {
   }
 
   /**
-   * Prevent duplicate pending payments
+   * Find active pending payment for a user
+   *
+   * @param userId - telegram user id
+   * @returns pending payment or null
    */
   async findPendingByUserId(
     userId: string
@@ -57,17 +78,23 @@ export class TelegramPaymentRepository {
   }
 
   /**
-   * Get all pending payments (used by poller)
+   * Get all valid pending payments
+   *
+   * @returns list of active pending payments
    */
   async findPending(): Promise<ITelegramPayment[]> {
     return TelegramPayment.find({
       status: "pending",
-      expiresAt: { $gt: new Date() }, // ⏱️ only valid payments
+      expiresAt: { $gt: new Date() },
     });
   }
 
   /**
-   * Mark payment as SUCCESS
+   * Mark payment as successful
+   *
+   * @param paymentId - unique payment id
+   * @param txSignature - blockchain transaction signature
+   * @returns updated payment document
    */
   async markSuccess(
     paymentId: string,
@@ -88,7 +115,9 @@ export class TelegramPaymentRepository {
   }
 
   /**
-   * Mark payment as FAILED
+   * Mark payment as failed
+   *
+   * @param paymentId - unique payment id
    */
   async markFailed(paymentId: string): Promise<void> {
     await TelegramPayment.updateOne(
@@ -103,12 +132,18 @@ export class TelegramPaymentRepository {
   }
 
   /**
-   * Expire old pending payments (use in cron/poller)
+   * Expire old pending payments
+   * (used by cron or poller job)
    */
-async expireOldPayments(): Promise<void> {
-  await TelegramPayment.updateMany(
-    { status: "pending", expiresAt: { $lt: new Date() } },
-    { $set: { status: "failed" } }
-  );
-}
+  async expireOldPayments(): Promise<void> {
+    await TelegramPayment.updateMany(
+      {
+        status: "pending",
+        expiresAt: { $lt: new Date() },
+      },
+      {
+        $set: { status: "failed" },
+      }
+    );
+  }
 }

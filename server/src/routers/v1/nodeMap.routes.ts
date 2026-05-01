@@ -3,18 +3,20 @@ import { NodeLatestRepository } from "../../repositories/nodeLatest.repository";
 import { NodeMapService } from "../../service/nodeMap.service";
 import { NodeMapController } from "../../controllers/nodeMap.controller";
 
-
+/**
+ * Node map routes
+ */
 const nodeMapRouter = Router();
 
 /**
- * Dependency Injection (no container)
+ * Dependency injection
  */
 const nodeRepo = new NodeLatestRepository();
 const nodeService = new NodeMapService(nodeRepo);
 const nodeController = new NodeMapController(nodeService);
 
 /**
- * PUBLIC MAP ROUTE
+ * Get all nodes for map view
  */
 nodeMapRouter.get("/nodes", nodeController.getMapNodes);
 
