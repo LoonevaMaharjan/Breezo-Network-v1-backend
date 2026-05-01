@@ -1,86 +1,88 @@
-import express from "express";
-import cors from "cors";
-
+import "dotenv/config";
+import http from "http";
+import app from "./app";
 import { serverConfig } from "./config";
-import v1Router from "./routers/v1/index.routes";
-import { appErrorHandler, genericErrorHandler } from "./middlewares/error.middleware";
-import logger from "./config/logger.config";
-import { connectDB } from "./db/db";
+
 import { initSocket } from "./socket";
 import { initApiUsageListener } from "./service/apiUsage.listener";
+import { connectDB } from "./db/db";
+import logger from "./config/logger.config";
 
+// Telegram
+import { TelegramBot } from "./chatbot/telegram/telegram.bot";
+import { TelegramService } from "./chatbot/telegram/telegram.service";
+import { LLMService } from "./service/llm.service";
+import { NodeLatestRepository } from "./repositories/nodeLatest.repository";
+import { TelegramPaymentRepository } from "./repositories/telegram/telegramPayment.repository";
+import { TelegramUserRepository } from "./repositories/telegram/telegramUser.repository";
 
+// Poller
+import { PaymentPollerService } from "./service/payment.poller.service";
 
-
-// initialize event system
-
-
-const app = express();
-
-/**
- * =========================
- * Core Middlewares
- * =========================
- */
-app.use(express.json());
-
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  })
-);
-
-initApiUsageListener();
-
-/**
- * =========================
- * API Routes
- * =========================
- */
-app.use("/api/v1", v1Router);
-
-/**
- * =========================
- * 404 Handler (IMPORTANT)
- * =========================
- */
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
-  });
-});
-
-/**
- * =========================
- * Error Handlers
- * =========================
- */
-app.use(appErrorHandler);
-app.use(genericErrorHandler);
-
-/**
- * =========================
- * Start Server Safely
- * =========================
- */
-const startServer = async () => {
+const startServer = async (): Promise<void> => {
   try {
+    // ── DB ─────────────────────────────────────────────
     await connectDB();
-    logger.info("MongoDB connected successfully");
+    logger.info("Database connected");
 
-    const server = initSocket(app);
+    // ── Background services ───────────────────────────
+    initApiUsageListener();
 
-    server.listen(serverConfig.PORT, () => {
-      logger.info(
-        `Server is running on http://localhost:${serverConfig.PORT}`
-      );
-      logger.info("Press Ctrl+C to stop the server.");
+    // ── Repositories ───────────────────────────────────
+    const userRepo = new TelegramUserRepository();
+    const paymentRepo = new TelegramPaymentRepository();
+    const nodeRepo = new NodeLatestRepository();
+    const llmService = new LLMService();
+
+    // ── Telegram service ───────────────────────────────
+    const telegramService = new TelegramService(
+      llmService,
+      userRepo,
+      nodeRepo,
+      paymentRepo
+    );
+
+    // ── Bot ────────────────────────────────────────────
+    const bot = new TelegramBot(telegramService);
+
+    // 🚀 Start bot WITHOUT blocking
+    bot.startPolling().catch((err) => {
+      logger.error("Telegram bot failed:", err);
     });
-  } catch (error) {
-    logger.error("Failed to start server:", error);
+
+    logger.info("Telegram bot started");
+
+    // ── Poller ─────────────────────────────────────────
+    const paymentPoller = new PaymentPollerService(
+      userRepo,
+      paymentRepo,
+      bot
+    );
+
+    paymentPoller.start();
+    logger.info("Payment poller started");
+
+    // ── HTTP server ────────────────────────────────────
+    const httpServer: http.Server = initSocket(app);
+
+    httpServer.listen(serverConfig.PORT, () => {
+      logger.info(`Server running on port ${serverConfig.PORT}`);
+    });
+
+    // ── Graceful shutdown ───────────────────────────────
+    const shutdown = async (signal: string): Promise<void> => {
+      logger.info(`${signal} received`);
+
+      httpServer.close(() => {
+        logger.info("HTTP server closed");
+        process.exit(0);
+      });
+    };
+
+    process.on("SIGINT", () => shutdown("SIGINT"));
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+  } catch (err) {
+    logger.error("Fatal startup error:", err);
     process.exit(1);
   }
 };

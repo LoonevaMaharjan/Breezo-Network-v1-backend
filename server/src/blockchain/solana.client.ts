@@ -14,7 +14,7 @@ export class SolanaClient {
   constructor() {
     this.connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
-    const keypair = Keypair.fromSecretKey(bs58.decode(serverConfig.PRIVATE_KEY));
+    const keypair = Keypair.fromSecretKey(bs58.decode(serverConfig.BACKEND_AUTHORITY_PRIVATE_KEY));
     this.wallet = new Wallet(keypair);
 
     this.provider = new AnchorProvider(this.connection, this.wallet, {

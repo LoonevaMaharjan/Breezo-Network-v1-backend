@@ -64,7 +64,7 @@ export class NodeService {
     const devicePubkey = new anchor.web3.PublicKey(devicePublicKey);
 
     const backendKeypair = Keypair.fromSecretKey(
-      bs58.decode(serverConfig.PRIVATE_KEY)
+      bs58.decode(serverConfig.BACKEND_AUTHORITY_PRIVATE_KEY)
     );
 
     const [nodeAccountPDA] = anchor.web3.PublicKey.findProgramAddressSync(

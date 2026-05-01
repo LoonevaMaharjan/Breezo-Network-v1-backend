@@ -23,4 +23,9 @@ export class NodeMapService {
             reward: node.reward,
         }));
     }
+ async getNearbyNodes(lat: number, lng: number, radius = 5000) {
+    return this.nodeLatestRepo.findNearby(lat, lng, radius);
+  }
+
+
 }

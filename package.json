@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "@coral-xyz/anchor": "^0.29.0",
-    "cors": "^2.8.6"
-  }
-}

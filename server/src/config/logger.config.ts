@@ -12,7 +12,7 @@ const logger = winston.createLogger({
                 level,
                 message,
                 timestamp,
-              
+
                 data
             };
             return JSON.stringify(output);

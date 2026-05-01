@@ -1,20 +1,17 @@
-import { Request, Response, NextFunction } from "express";
+import { Response, NextFunction } from "express";
 import { IWeatherService } from "../service/weather.service";
-
-interface TypedRequest<T> extends Request {
-  validatedQuery?: T;
-}
+import { ApiKeyRequest } from "../middlewares/apiKey.middleware";
 
 export class WeatherController {
   constructor(private service: IWeatherService) {}
 
   current = async (
-    req: TypedRequest<{ nodeId: string }>,
+    req: ApiKeyRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> => {
+  ) => {
     try {
-      const { nodeId } = req.validatedQuery!;
+      const { nodeId } = req.params;
 
       const result = await this.service.getCurrent(nodeId);
 
@@ -28,14 +25,17 @@ export class WeatherController {
   };
 
   nearby = async (
-    req: TypedRequest<{ lat: number; lng: number }>,
+    req: ApiKeyRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> => {
+  ) => {
     try {
-      const { lat, lng } = req.validatedQuery!;
+      const { lat, lng } = req.query;
 
-      const result = await this.service.getNearby(lat, lng);
+      const result = await this.service.getNearby(
+        Number(lat),
+        Number(lng)
+      );
 
       res.json({
         success: true,
@@ -47,17 +47,18 @@ export class WeatherController {
   };
 
   history = async (
-    req: TypedRequest<{ nodeId: string; from: string; to: string }>,
+    req: ApiKeyRequest,
     res: Response,
     next: NextFunction
-  ): Promise<void> => {
+  ) => {
     try {
-      const { nodeId, from, to } = req.validatedQuery!;
+      const { nodeId } = req.params;
+      const { from, to } = req.query;
 
       const result = await this.service.getHistory(
         nodeId,
-        new Date(from),
-        new Date(to)
+        new Date(from as string),
+        new Date(to as string)
       );
 
       res.json({
