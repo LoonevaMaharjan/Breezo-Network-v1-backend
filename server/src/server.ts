@@ -4,7 +4,6 @@ import app from "./app";
 import { serverConfig } from "./config";
 
 import { initSocket } from "./socket";
-import { initApiUsageListener } from "./service/apiUsage.listener";
 import { connectDB } from "./db/db";
 import logger from "./config/logger.config";
 
@@ -26,7 +25,7 @@ const startServer = async (): Promise<void> => {
     logger.info("Database connected");
 
     // ── Background services ───────────────────────────
-    initApiUsageListener();
+
 
     // ── Repositories ───────────────────────────────────
     const userRepo = new TelegramUserRepository();
