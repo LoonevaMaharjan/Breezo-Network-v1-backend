@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::pubkey;
 use anchor_spl::token::{self, Token, TokenAccount, Mint, Transfer};
 
-declare_id!("5ygRCA7pF2h7GeGxP9RaiNQNTNb5J5GnB9XSzxh75gVw");
+declare_id!("2CZ1WzjHhgbBFaRaTxhLpdKQKAEsYDFga6bbuQRHfCJu");
 
 
 // =====================================================
