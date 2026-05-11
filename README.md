@@ -265,31 +265,6 @@ Treasury (PDA)
 
 ---
 
-## API Reference
-
-Base URL: `https://api.breezonetwork.xyz/api/v1`
-
-All endpoints require: `x-api-key: YOUR_API_KEY`
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/weather/current?nodeId=` | Latest reading from a node |
-| `GET` | `/weather/nearby?lat=&lng=&radius=` | Readings from nearby nodes |
-| `GET` | `/weather/history?nodeId=&days=` | Historical data (up to 30 days) |
-| `GET` | `/nodes` | List all active nodes |
-| `POST` | `/credit/add` | Add API request credits |
-
-### API Access Plans
-
-| Plan | BREEZO Cost | Requests/month |
-|---|---|---|
-| Basic | 50 BREEZO | 10,000 |
-| Intermediate | 250 BREEZO | 100,000 |
-| Enterprise | 1,000+ BREEZO | Unlimited / custom |
-
-API credits are purchased on-chain via `buyProduct`. The backend activates quota after on-chain confirmation.
-
----
 
 ## Reward Engine
 
