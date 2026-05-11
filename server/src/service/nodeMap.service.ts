@@ -20,6 +20,7 @@ export class NodeMapService {
             temperature: node.temperature,
             pm25: node.pm25,
             pm10: node.pm10,
+            humidity:node.humidity,
             reward: node.reward,
         }));
     }
